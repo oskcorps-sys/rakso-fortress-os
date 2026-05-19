@@ -1,0 +1,109 @@
+# STATE_MACHINE.yaml - Defines valid states and transitions for SDD+
+#
+# Used by: validators (Phase 2), CLI (Phase 2+), audit (all phases)
+# Enforces: only valid transitions allowed; invalid ones are rejected
+
+version: 1.0
+
+# State definitions
+states:
+  BOOTSTRAP:
+    name: "Bootstrap"
+    description: "Project initialized, repo structure created"
+    is_terminal: false
+    
+  DRAFT:
+    name: "Draft"
+    description: "Phase implementation in progress"
+    is_terminal: false
+    
+  REFINED:
+    name: "Refined"
+    description: "Implementation complete, passed audit, ready for lock"
+    is_terminal: false
+    
+  LOCKED:
+    name: "Locked"
+    description: "Phase locked, cannot regress, gates enforced"
+    is_terminal: true  # Cannot transition from LOCKED to previous states
+    
+  SUPERSEDED:
+    name: "Superseded"
+    description: "Phase canceled or replaced by newer version"
+    is_terminal: true
+
+# Valid transitions (if not listed, transition is INVALID)
+transitions:
+  
+  # Bootstrap → Draft (human initiates phase)
+  - from: BOOTSTRAP
+    to: DRAFT
+    triggered_by: [human, automation]
+    description: "Human says 'start Phase N', Codex begins implementation"
+    requires:
+      - "PHASE_N_SPEC.yaml exists"
+      - "Codex has read AGENTS.md"
+    
+  # Draft → Refined (audit passes)
+  - from: DRAFT
+    to: REFINED
+    triggered_by: [claude_code]  # Only auditor can say "audit passed"
+    description: "Claude Code completes audit, findings allow lock"
+    requires:
+      - "PHASE_N_AUDIT.yaml status: APPROVED"
+      - "All blockers resolved"
+      - "Human has not requested changes"
+    
+  # Refined → Locked (human approves merge)
+  - from: REFINED
+    to: LOCKED
+    triggered_by: [human]
+    description: "Human approves, merges PR, tags git"
+    requires:
+      - "PHASE_N_AUDIT.yaml APPROVED"
+      - "CI is green"
+      - "Code merged to main"
+      - "git tag phase-N-locked created"
+    
+  # Locked → Draft (Codex requests regression fix)
+  - from: LOCKED
+    to: DRAFT
+    triggered_by: [human]
+    description: "Critical bug found; human decides to revert and re-audit"
+    requires:
+      - "Human approval (emergency gate)"
+      - "Reason documented"
+      - "Previous phase is NOT regressed"
+    
+  # Any → Superseded (phase canceled)
+  - from: [DRAFT, REFINED, LOCKED]
+    to: SUPERSEDED
+    triggered_by: [human]
+    description: "Phase canceled or replaced"
+    requires:
+      - "Human decision + reason documented"
+      - "New phase does not depend on superseded work"
+
+# Rules (enforced by validator + CLI)
+rules:
+  - "LOCKED is terminal: cannot transition back to DRAFT/REFINED without human intervention"
+  - "DRAFT → REFINED requires audit APPROVED status (not just completed)"
+  - "REFINED → LOCKED requires human approval + CI green"
+  - "Invalid transitions are rejected with error (cannot proceed)"
+  - "Each transition is logged immutably in /sdd/logs/state.jsonl"
+
+# Audit gates (blocking transitions)
+gates:
+  DRAFT_to_REFINED:
+    gate_name: "Audit Gate"
+    enforcer: "claude_code"
+    blocks_transition: true
+    rule: "PHASE_N_AUDIT.yaml must show APPROVED status"
+    severity: "BLOCKER (cannot bypass)"
+    
+  REFINED_to_LOCKED:
+    gate_name: "Human Approval Gate"
+    enforcer: "human"
+    blocks_transition: true
+    rule: "Human must read summary, approve merge"
+    severity: "BLOCKER (cannot bypass)"

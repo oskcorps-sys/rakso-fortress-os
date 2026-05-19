@@ -1,0 +1,85 @@
+# CONTRACT.yaml - Binding technical specification
+#
+# This is written by Codex BEFORE implementing code.
+# It specifies: inputs, outputs, constraints, acceptance tests.
+# Code must match this contract. If contract is wrong, update it (reset audit).
+#
+# This artifact is immutable once approved by audit.
+
+version: 1.0
+created_at: null  # YYYY-MM-DDTHH:MM:SSZ (auto-filled when committed)
+status: DRAFT     # DRAFT → COMMITTED (after human approval)
+
+# Metadata
+phase: null  # 0, 1, 2, ...
+contract_id: "contract-phase-N-v1"
+
+# High-level spec
+specification:
+  title: "What this contract delivers"
+  description: |
+    2-3 paragraph description of what will be built.
+    Should answer: WHAT, WHY, and HOW at a glance.
+  
+  success_criteria:
+    - "Criterion 1 (measurable, testable)"
+    - "Criterion 2 (criterion 2)"
+
+# Inputs: what does the code accept?
+inputs:
+  param_name:
+    type: "str | int | dict | list"
+    required: true
+    description: "What this parameter represents"
+    example: "example_value"
+    constraints: 
+      - "Must be non-empty if provided"
+      - "Max length: 255"
+
+# Outputs: what does the code produce?
+outputs:
+  output_name:
+    type: "dict | list | str"
+    description: "What this output represents"
+    example: {...}
+    schema_ref: "schemas/output.schema.yaml"  # (Phase 1+: pydantic schema)
+    validation_rule: "Must pass schema validation"
+
+# Constraints: rules the code must follow
+constraints:
+  - "No hardcoded secrets (use env vars)"
+  - "All user inputs validated before use"
+  - "Error handling required for all external calls"
+  - "Idempotent: calling twice with same input = same output"
+
+# What we assume is true
+assumptions:
+  - "Dependency X is already available"
+  - "Database connection exists"
+
+# What we're NOT doing in this phase (explicit deferral)
+defer_to_next_phase:
+  - "Feature X (why: too complex for Phase N, scheduled for N+1)"
+  - "Optimization Y (why: not critical path now)"
+
+# Test cases (what proves this contract works?)
+acceptance_tests:
+  - name: "test_happy_path"
+    given: "Normal inputs (param1=foo, param2=123)"
+    when: "Function called with inputs"
+    then: "Output matches schema, success=true"
+    
+  - name: "test_edge_case_empty_input"
+    given: "Empty or null input"
+    when: "Function called"
+    then: "Graceful error or default behavior (specify which)"
+
+# Who committed to this contract (for questions)
+committed_by: "codex"
+human_approved: false
+
+# Links to related artifacts
+references:
+  - user_story: "USER_STORY.yaml"
+  - prior_contract: "PHASE_N-1/CONTRACT.yaml"
+  - design_notes: "url/to/design"

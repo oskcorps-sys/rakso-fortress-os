@@ -1,0 +1,49 @@
+# USER_STORY.yaml - Starting specification for a phase or feature
+# 
+# This is the seed that kicks off the CONTRACT → implementation → audit loop.
+# Human writes this (or it exists from prior design). 
+# Codex reads this and writes CONTRACT.yaml based on it.
+
+version: 1.0
+created_at: null  # YYYY-MM-DDTHH:MM:SSZ
+
+# Which phase does this user story belong to?
+phase: null  # 0, 1, 2, 3, ...
+
+# Title and narrative
+title: "User story title (short)"
+
+narrative: |
+  As a [role], I want [capability] so that [outcome].
+  
+  Context: Why is this needed? What problem does it solve?
+  Scope: What's in? What's out (defer to next phase)?
+
+# Acceptance criteria (non-technical, business-focused)
+acceptance_criteria:
+  - criterion_1: "User can do X when Y happens"
+  - criterion_2: "System behaves like Z under condition W"
+
+# Assumptions (what must be true to proceed)
+assumptions:
+  - assumption_1: "Dependency A already implemented"
+  - assumption_2: "Environment is configured"
+
+# Risks (known unknowns)
+risks:
+  - risk_1: "Unclear how to implement X (needs spike?)"
+  - risk_2: "Performance concern with large inputs"
+
+# Defer to next phase (scope boundary)
+defer_to_next_phase:
+  - feature_1: "Why not included now?"
+  - feature_2: "Scheduled for Phase N"
+
+# Links to prior context
+references:
+  - prior_phase_audit: "PHASE_N-1_AUDIT.yaml"
+  - design_doc: "link/to/design"
+  - slack_thread: "link/to/discussion"
+
+# Person who wrote this (for questions)
+written_by: "oscar"
