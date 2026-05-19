@@ -53,11 +53,11 @@ class TestValidateContractValidator:
                 "specification": {"title": "File test"},
             }
             yaml.dump(data, f)
-            f.flush()
+            fname = f.name
 
-            result = validate_contract(f.name)
-            assert result.valid is True
-            Path(f.name).unlink()
+        result = validate_contract(fname)
+        assert result.valid is True
+        Path(fname).unlink()
 
 
 class TestValidateStateValidator:
@@ -98,12 +98,12 @@ class TestValidatorErrorHandling:
         """Test validator with malformed YAML."""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write("{ invalid yaml: [")
-            f.flush()
+            fname = f.name
 
-            result = validate_contract(f.name)
-            assert result.valid is False
-            assert "Invalid YAML" in result.errors[0].message
-            Path(f.name).unlink()
+        result = validate_contract(fname)
+        assert result.valid is False
+        assert "Invalid YAML" in result.errors[0].message
+        Path(fname).unlink()
 
     def test_validator_returns_correct_schema_name(self):
         """Test that validator returns correct schema name."""
