@@ -116,3 +116,20 @@ class TestValidatorErrorHandling:
         }
         result = validate_contract(data, schema_name="custom_name")
         assert result.schema == "custom_name"
+
+    def test_validate_state_yaml_error(self):
+        """Test state validator handles YAML syntax errors."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            f.write("{ invalid yaml: [unclosed")
+            fname = f.name
+
+        result = validate_state(fname)
+        assert result.valid is False
+        assert "Invalid YAML" in result.errors[0].message
+        Path(fname).unlink()
+
+    def test_validate_state_generic_exception(self):
+        """Test state validator handles unexpected exceptions."""
+        result = validate_state("/nonexistent/deeply/nested/path/that/does/not/exist.yaml")
+        assert result.valid is False
+        assert len(result.errors) > 0

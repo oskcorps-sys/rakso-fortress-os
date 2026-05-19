@@ -1,12 +1,14 @@
 """USER_STORY schema - business requirements."""
 
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sdd.schemas.base import BaseArtifact
 
 
 class UserStorySchema(BaseArtifact):
     """USER_STORY.yaml schema - business context and requirements."""
+
+    model_config = ConfigDict(extra="allow")
 
     title: str = Field(..., description="Story title")
     user_persona: str = Field(..., description="Who the user is")
@@ -27,7 +29,3 @@ class UserStorySchema(BaseArtifact):
         default_factory=list,
         description="How to measure success"
     )
-
-    class Config:
-        """Pydantic config."""
-        extra = "allow"

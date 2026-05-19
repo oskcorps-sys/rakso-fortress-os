@@ -1,12 +1,14 @@
 """PHASE_SPEC schema - phase requirements and expectations."""
 
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sdd.schemas.base import BaseArtifact
 
 
 class PhaseSpecSchema(BaseArtifact):
     """PHASE_SPEC.yaml schema - what a phase should deliver."""
+
+    model_config = ConfigDict(extra="allow")
 
     title: str = Field(..., description="Phase title")
 
@@ -51,7 +53,3 @@ class PhaseSpecSchema(BaseArtifact):
         default_factory=list,
         description="Phase dependencies"
     )
-
-    class Config:
-        """Pydantic config."""
-        extra = "allow"

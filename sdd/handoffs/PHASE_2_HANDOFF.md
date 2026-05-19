@@ -19,3 +19,22 @@ Carry-overs from Phase 1 (must be fixed in this phase):
 - F-P1-005: validate_state.py coverage ≥80%
 
 Branch to use: `feature/phase-2` (created off `main` after Phase 1 merge).
+
+## [2026-05-19T20:15:00Z] [CODEX] [CONTRACT_DRAFT_READY]
+
+Contract written and committed: sdd/artifacts/PHASE_2_CONTRACT.yaml
+
+Scope:
+- 6 states + transition table with role-based gating (Auditor-only: REFINED→LOCKED, AUDITING→COMPLETED)
+- 4 CLI commands: status, validate, transition, init
+- ≥85% coverage on state_machine + cli modules
+- Phase 1 carry-overs: F-P1-001/003/004/005
+
+Waiting for CONTRACT_LOCKED before proceeding to implementation.
+
+## [2026-05-19T20:30:00Z] [AUDITOR] [CONTRACT_LOCKED]
+
+Contract reviewed and approved. Scope is clear, acceptance tests are measurable.
+Authorization to proceed: implement code matching CONTRACT.
+
+Implementer: proceed with Phase 1 carry-overs (commit 1), then state machine (commit 2), then CLI (commit 3), then tests (commit 4).
