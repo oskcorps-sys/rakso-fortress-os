@@ -1,0 +1,38 @@
+version: 1
+roles:
+  implementer:
+    description: "Writes code, tests, contracts against locked specs"
+    allowed_transitions:
+      - "DRAFT->REFINED"
+      - "LOCKED->IMPLEMENTING"
+      - "IMPLEMENTING->AUDITING"
+    allowed_file_patterns:
+      - "src/**/*"
+      - "tests/**/*"
+      - "sdd/artifacts/CONTRACT*.yaml"
+    forbidden_file_patterns:
+      - "sdd/artifacts/SPEC*.yaml"
+      - "sdd/artifacts/AUDIT*.yaml"
+      - "AGENTS.yaml"
+    constraints:
+      - "Cannot modify SPEC or AUDIT artifacts"
+      - "Cannot lock or complete phases"
+
+  auditor:
+    description: "Reviews, gates transitions, writes specs and audits"
+    allowed_transitions:
+      - "DRAFT->REFINED"
+      - "REFINED->LOCKED"
+      - "AUDITING->COMPLETED"
+      - "AUDITING->IMPLEMENTING"
+      - "*->DRAFT"
+    allowed_file_patterns:
+      - "sdd/artifacts/SPEC*.yaml"
+      - "sdd/artifacts/AUDIT*.yaml"
+      - "sdd/handoffs/**/*"
+      - "AGENTS.yaml"
+    forbidden_file_patterns:
+      - "src/**/*"
+    constraints:
+      - "Cannot write implementation code"
+      - "Cannot skip audit step"

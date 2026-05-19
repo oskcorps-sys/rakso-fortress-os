@@ -20,14 +20,9 @@ class StateMachine:
 
     STATE_FILE = "sdd/artifacts/STATE_SNAPSHOT.yaml"
 
-    def __init__(self, state_file: Optional[str] = None):
-        """
-        Initialize state machine.
-
-        Args:
-            state_file: Path to STATE_SNAPSHOT.yaml (default: STATE_FILE)
-        """
+    def __init__(self, state_file: Optional[str] = None, agents_yaml_path: str = "AGENTS.yaml"):
         self.state_file = state_file or self.STATE_FILE
+        self.agents_yaml_path = agents_yaml_path
         self._state = None
         self._load_state()
 
@@ -89,7 +84,9 @@ class StateMachine:
         from_state = self._state.current_state
 
         # Check if transition is allowed
-        is_allowed, allowed_roles = is_transition_allowed(from_state, to_state, role)
+        is_allowed, allowed_roles = is_transition_allowed(
+            from_state, to_state, role, agents_yaml_path=self.agents_yaml_path
+        )
 
         if not is_allowed:
             raise TransitionError(from_state, to_state, role, allowed_roles)
@@ -114,6 +111,22 @@ class StateMachine:
             "success": True,
             "from_state": old_state,
             "to_state": to_state,
+            "timestamp": self._state.last_updated.isoformat(),
+        }
+
+    def start_new_phase(self, next_phase: int) -> Dict[str, Any]:
+        """Start a new phase. Caller must verify current_state == COMPLETED."""
+        old_phase = self._state.current_phase
+        if old_phase not in self._state.completed_phases:
+            self._state.completed_phases.append(old_phase)
+        self._state.current_phase = next_phase
+        self._state.current_state = "DRAFT"
+        self._state.locked_at = None
+        self._state.last_updated = datetime.now(UTC)
+        self._save_state()
+        return {
+            "old_phase": old_phase,
+            "new_phase": next_phase,
             "timestamp": self._state.last_updated.isoformat(),
         }
 

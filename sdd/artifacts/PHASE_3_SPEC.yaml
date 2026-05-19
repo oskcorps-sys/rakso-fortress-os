@@ -1,0 +1,218 @@
+phase: 3
+created_at: "2026-05-19T23:00:00Z"
+author: "Claude Opus 4.6 (Auditor)"
+title: "Agent Harness — Machine-Enforceable Role Constraints"
+
+description: |
+  Phase 3 closes the enforcement loop. Phases 1-2 built schemas, validators,
+  a state machine, and a CLI — but agent roles are still enforced by convention
+  (AGENTS.md) and hardcoded in transitions.py. Phase 3 makes the harness
+  machine-readable and self-enforcing:
+
+  1. Authority matrix lives in YAML, not code — roles, permissions, file patterns,
+     and constraints are data, not hardcoded constants.
+  2. The audit loop is automated — `sdd audit` runs the 4-step check and produces
+     a machine-readable AUDIT.yaml without manual intervention.
+  3. Phase sequencing is enforced — `sdd new-phase` only works when the current
+     phase is COMPLETED.
+  4. Multi-project support — a workspace can track multiple SDD projects,
+     each with independent state.
+
+user_story: |
+  As Oscar (operator/architect), I need AI agents to be physically unable to
+  skip steps or exceed their authority. When I hand a project to an AI:
+  - It reads AGENTS.yaml and knows exactly what it can/cannot do
+  - It cannot transition states without the right role
+  - It cannot skip the audit step — `sdd audit` runs automatically
+  - It cannot start Phase N+1 until Phase N is COMPLETED and merged
+  - I can manage multiple SDD projects from one workspace
+
+success_criteria:
+  - "AGENTS.yaml defines roles, permissions, allowed file patterns, constraints — parsed by state machine"
+  - "AgentRoleSchema in Pydantic validates AGENTS.yaml structure"
+  - "`sdd audit` runs pytest + coverage + conformance checks, outputs AUDIT.yaml"
+  - "`sdd new-phase` creates Phase N+1 artifacts only when current phase is COMPLETED"
+  - "`sdd projects list` shows all registered projects with current state"
+  - "Transition table reads allowed_roles from AGENTS.yaml instead of hardcoded dict"
+  - "≥85% test coverage on new code"
+
+scope:
+  included:
+    - "sdd/schemas/agent.py — AgentRoleSchema, AgentsConfigSchema (Pydantic v2)"
+    - "AGENTS.yaml — machine-readable authority matrix at project root"
+    - "sdd/state_machine/transitions.py — refactor to load roles from AGENTS.yaml"
+    - "sdd/cli/commands/audit.py — `sdd audit` command"
+    - "sdd/cli/commands/new_phase.py — `sdd new-phase` command"
+    - "sdd/cli/commands/projects.py — `sdd projects list/add/remove`"
+    - "sdd/workspace.py — multi-project workspace config (sdd.workspace.yaml)"
+    - "tests/test_agent_schema.py — schema validation tests"
+    - "tests/test_audit_command.py — audit CLI tests"
+    - "tests/test_new_phase.py — new-phase CLI tests"
+    - "tests/test_workspace.py — workspace management tests"
+
+  deferred_to_phase_4:
+    - "Web UI / dashboard"
+    - "Telemetry & metrics emission"
+    - "Advanced conflict resolution"
+    - "Git integration (auto-branch, auto-commit)"
+    - "pip packaging / PyPI distribution"
+
+agents_yaml_spec:
+  format: |
+    roles:
+      implementer:
+        description: "Writes code, tests, contracts against locked specs"
+        allowed_transitions: [DRAFT->REFINED, LOCKED->IMPLEMENTING, IMPLEMENTING->AUDITING]
+        allowed_file_patterns:
+          - "src/**/*"
+          - "tests/**/*"
+          - "sdd/artifacts/CONTRACT*.yaml"
+        forbidden_file_patterns:
+          - "sdd/artifacts/SPEC*.yaml"
+          - "sdd/artifacts/AUDIT*.yaml"
+          - "AGENTS.yaml"
+        constraints:
+          - "Cannot modify SPEC or AUDIT artifacts"
+          - "Cannot lock or complete phases"
+
+      auditor:
+        description: "Reviews, gates transitions, writes specs and audits"
+        allowed_transitions: [DRAFT->REFINED, REFINED->LOCKED, AUDITING->COMPLETED, AUDITING->IMPLEMENTING, any->DRAFT]
+        allowed_file_patterns:
+          - "sdd/artifacts/SPEC*.yaml"
+          - "sdd/artifacts/AUDIT*.yaml"
+          - "sdd/handoffs/**/*"
+          - "AGENTS.yaml"
+        forbidden_file_patterns:
+          - "src/**/*"
+        constraints:
+          - "Cannot write implementation code"
+          - "Cannot skip audit step"
+
+audit_command_spec:
+  name: "sdd audit"
+  steps:
+    - step: "pytest"
+      action: "Run pytest -v --cov"
+      pass_criteria: "0 failures"
+    - step: "coverage"
+      action: "Check coverage on target modules"
+      pass_criteria: "≥ threshold from contract"
+    - step: "spec_conformance"
+      action: "Verify all spec deliverables exist"
+      pass_criteria: "All files in spec.scope.included exist"
+    - step: "contract_conformance"
+      action: "Verify all acceptance tests have matching test functions"
+      pass_criteria: "Every acceptance_test name maps to a test function"
+  output: "sdd/artifacts/PHASE_N_AUDIT.yaml"
+  options:
+    - "--phase N (default: current phase)"
+    - "--role auditor (required)"
+    - "--auto-approve (skip manual review, for CI)"
+
+new_phase_command_spec:
+  name: "sdd new-phase"
+  precondition: "current_state == COMPLETED"
+  action: |
+    1. Read current phase number from STATE_SNAPSHOT.yaml
+    2. Create PHASE_{N+1}_CONTRACT.yaml (template)
+    3. Create PHASE_{N+1}_HANDOFF.md (empty log)
+    4. Update STATE_SNAPSHOT.yaml: current_phase=N+1, current_state=DRAFT
+    5. Output summary of created files
+  options:
+    - "--title 'Phase title' (optional)"
+
+workspace_spec:
+  config_file: "sdd.workspace.yaml"
+  location: "workspace root (parent of project dirs)"
+  format: |
+    workspace: "my-workspace"
+    projects:
+      - name: "sdd-template"
+        path: "./sdd-template"
+        current_phase: 3
+        current_state: "IMPLEMENTING"
+      - name: "client-project-a"
+        path: "./client-project-a"
+        current_phase: 1
+        current_state: "DRAFT"
+  commands:
+    - "sdd projects list — show all projects with status"
+    - "sdd projects add <path> — register existing project"
+    - "sdd projects remove <name> — unregister project"
+
+constraints:
+  - "AGENTS.yaml must be backwards-compatible: if file doesn't exist, fall back to hardcoded defaults"
+  - "No new top-level dependencies without DECISION entry"
+  - "`sdd audit` must work without AGENTS.yaml (uses hardcoded defaults)"
+  - "Coverage ≥85% on all new modules"
+  - "All existing 75 tests must continue passing"
+
+acceptance_tests:
+  - name: "test_agents_yaml_loads"
+    given: "Valid AGENTS.yaml with 2 roles"
+    when: "AgentsConfigSchema.model_validate(data)"
+    then: "Parses without error, roles accessible by name"
+
+  - name: "test_agents_yaml_enforces_transitions"
+    given: "AGENTS.yaml loaded, implementer role"
+    when: "transition(LOCKED) from REFINED"
+    then: "Denied — implementer not in allowed_transitions for REFINED->LOCKED"
+
+  - name: "test_agents_yaml_fallback"
+    given: "No AGENTS.yaml file"
+    when: "StateMachine loads"
+    then: "Uses hardcoded defaults from Phase 2, no error"
+
+  - name: "test_audit_command_runs"
+    given: "Project with passing tests"
+    when: "sdd audit --phase 2 --role auditor"
+    then: "Produces AUDIT.yaml with verdict, exit 0"
+
+  - name: "test_audit_command_fails"
+    given: "Project with failing tests"
+    when: "sdd audit --phase 2 --role auditor"
+    then: "AUDIT.yaml with REJECTED verdict, exit 1"
+
+  - name: "test_new_phase_from_completed"
+    given: "current_state=COMPLETED, current_phase=2"
+    when: "sdd new-phase"
+    then: "Creates Phase 3 artifacts, state becomes DRAFT phase 3"
+
+  - name: "test_new_phase_blocked"
+    given: "current_state=IMPLEMENTING"
+    when: "sdd new-phase"
+    then: "Error: current phase not completed, exit 1"
+
+  - name: "test_projects_list"
+    given: "sdd.workspace.yaml with 2 projects"
+    when: "sdd projects list"
+    then: "Shows both projects with name, phase, state"
+
+  - name: "test_projects_add"
+    given: "Existing SDD project directory"
+    when: "sdd projects add ./my-project"
+    then: "Project added to sdd.workspace.yaml"
+
+  - name: "test_coverage_threshold"
+    given: "All Phase 3 code"
+    when: "pytest --cov on new modules"
+    then: "Coverage ≥85%"
+
+git_workflow:
+  branch: "feature/phase-3"
+  commit_sequence:
+    - "PHASE 3: Spec + Contract"
+    - "PHASE 3: Agent schema + AGENTS.yaml"
+    - "PHASE 3: Refactor transitions to use AGENTS.yaml"
+    - "PHASE 3: sdd audit command"
+    - "PHASE 3: sdd new-phase command"
+    - "PHASE 3: Multi-project workspace"
+    - "PHASE 3: Tests + coverage ≥85%"
+  pr_target: "master"
+
+dependencies:
+  - "Phase 2 complete and merged (state machine + CLI)"
+  - "75 tests passing on master"
+
+status: READY_FOR_CONTRACT

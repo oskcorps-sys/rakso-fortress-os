@@ -5,6 +5,7 @@ from sdd.schemas.state import StateSnapshotSchema
 from sdd.schemas.story import UserStorySchema
 from sdd.schemas.spec import PhaseSpecSchema
 from sdd.schemas.audit import AuditResultSchema
+from sdd.schemas.agent import AgentRoleSchema, AgentsConfigSchema
 
 __all__ = [
     "ContractSchema",
@@ -12,4 +13,6 @@ __all__ = [
     "UserStorySchema",
     "PhaseSpecSchema",
     "AuditResultSchema",
+    "AgentRoleSchema",
+    "AgentsConfigSchema",
 ]
