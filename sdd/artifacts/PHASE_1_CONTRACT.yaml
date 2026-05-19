@@ -1,0 +1,149 @@
+phase: 1
+contract_id: contract-phase-1-v1
+created_at: 2026-05-19T18:10:00Z
+status: COMMITTED
+
+specification:
+  title: "Pydantic Schemas + Validators for SDD+ spec enforcement"
+  description: |
+    Build 5 Pydantic v2 schemas that enforce the structure of SDD+ artifacts.
+    Implement 2 validators that read YAML and validate against schemas.
+    Provide CLI integration and ≥80% test coverage.
+
+  success_criteria:
+    - "All 5 schemas defined and importable"
+    - "validate_contract() validates CONTRACT.yaml successfully"
+    - "validate_state() validates STATE_SNAPSHOT.yaml successfully"
+    - "Both validators reject invalid artifacts with clear error messages"
+    - "CLI command 'sdd validate <path>' works end-to-end"
+    - "Test coverage ≥80% on all validator code"
+    - "All example artifacts in /sdd/artifacts/examples/ validate as expected"
+
+inputs:
+  artifact_path:
+    type: "str | Path"
+    required: true
+    description: "Path to YAML artifact to validate"
+    example: "sdd/artifacts/CONTRACT.yaml"
+    constraints: "Must be readable YAML file"
+
+  schema_name:
+    type: "str"
+    required: false
+    description: "Which schema to validate against (auto-detect if omitted)"
+    example: "contract"
+    constraints: "Must be one of: contract, state, story, spec, audit"
+
+outputs:
+  validation_result:
+    type: "dict"
+    description: "Validation result with errors and warnings"
+    schema_ref: "schemas/validation_result.schema.yaml"
+    example:
+      valid: true
+      schema: "contract"
+      errors: []
+      warnings: []
+    validation_rule: "Must match ValidationResult schema"
+
+constraints:
+  - "Use Pydantic v2 (pydantic>=2.0.0)"
+  - "Use pydantic-yaml for YAML parsing"
+  - "Schemas live in /sdd/schemas/ as separate .py files"
+  - "All error messages must be actionable (tell user how to fix)"
+  - "Validators must be idempotent"
+  - "No hardcoded paths (use Path objects)"
+  - "All validators must support both dict and YAML file input"
+
+assumptions:
+  - "Artifact examples exist in /sdd/artifacts/"
+  - "pytest installed and working"
+  - "Pydantic v2 available"
+
+acceptance_tests:
+  - name: "test_contract_schema_imports"
+    given: "sdd/schemas/contract.py exists"
+    when: "from sdd.schemas.contract import ContractSchema"
+    then: "Import succeeds, schema is Pydantic BaseModel"
+
+  - name: "test_contract_schema_validates_valid_artifact"
+    given: "Valid CONTRACT.yaml from /sdd/artifacts/"
+    when: "ContractSchema.model_validate_yaml(content)"
+    then: "Returns valid model, no errors"
+
+  - name: "test_contract_schema_rejects_missing_field"
+    given: "CONTRACT.yaml missing 'specification' field"
+    when: "ContractSchema.model_validate_yaml(content)"
+    then: "Raises ValidationError with field name in message"
+
+  - name: "test_validate_contract_validator_happy_path"
+    given: "Valid CONTRACT.yaml"
+    when: "validate_contract('sdd/artifacts/CONTRACT.yaml')"
+    then: "Returns {valid: true, errors: [], schema: 'contract'}"
+
+  - name: "test_validate_contract_validator_invalid_file"
+    given: "Invalid YAML artifact"
+    when: "validate_contract('path/to/invalid.yaml')"
+    then: "Returns {valid: false, errors: [...]}"
+
+  - name: "test_validate_state_validator_works"
+    given: "Valid STATE_SNAPSHOT.yaml"
+    when: "validate_state('sdd/artifacts/STATE_SNAPSHOT.yaml')"
+    then: "Returns {valid: true, errors: []}"
+
+  - name: "test_cli_validate_command_works"
+    given: "CLI installed"
+    when: "sdd validate sdd/artifacts/CONTRACT.yaml"
+    then: "Outputs validation result in human format"
+
+  - name: "test_coverage_threshold"
+    given: "All validator code"
+    when: "pytest --cov=sdd/validators --cov=sdd/schemas"
+    then: "Coverage ≥80%"
+
+defer_to_next_phase:
+  - "State machine validation logic (Phase 2: requires STATE_MACHINE setup)"
+  - "Custom error formatting templates (Phase 2: nice-to-have)"
+  - "Audit schema (Phase 2: depends on audit structure finalization)"
+  - "Recursive schema validation (Phase 3+: for nested artifacts)"
+
+files_to_create:
+  - "sdd/schemas/__init__.py"
+  - "sdd/schemas/base.py (common fields)"
+  - "sdd/schemas/contract.py"
+  - "sdd/schemas/state.py"
+  - "sdd/schemas/story.py"
+  - "sdd/schemas/spec.py"
+  - "sdd/schemas/audit.py"
+  - "sdd/validators/validate_contract.py"
+  - "sdd/validators/validate_state.py"
+  - "tests/test_schemas.py (10+ tests)"
+  - "tests/test_validators.py (8+ tests)"
+  - "sdd/artifacts/examples/valid_contract.yaml"
+  - "sdd/artifacts/examples/invalid_contract.yaml"
+
+git_workflow:
+  - "Branch: feature/phase-1"
+  - "Commit: 'PHASE 1: Define schemas' (CONTRACT + schemas files)"
+  - "Commit: 'PHASE 1: Implement validators' (validator code)"
+  - "Commit: 'PHASE 1: Add tests' (test files, ≥80% coverage)"
+  - "Commit: 'PHASE 1: Integration' (CLI + examples)"
+  - "PR: feature/phase-1 → main"
+
+---
+
+## Scope is LOCKED
+- ✅ 5 schemas (not 6, not 4)
+- ✅ 2 validators (not 3, not 1)
+- ✅ ≥80% coverage (not 75%)
+- ✅ YAML-first (not JSON)
+- ❌ State machine validation (deferred to Phase 2)
+- ❌ Custom error templates (deferred)
+
+If I find this contract is wrong while coding, I stop and revise with message "CONTRACT.yaml revised: [reason]".
+
+---
+
+created_at: 2026-05-19T18:10:00Z
+committed_at: 2026-05-19T18:15:00Z
+commitment_level: HIGH (locked, no changes without approval)
