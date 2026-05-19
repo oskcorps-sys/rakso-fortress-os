@@ -1,7 +1,7 @@
 """Tests for Pydantic schemas."""
 
 import pytest
-from datetime import datetime
+from datetime import datetime, UTC
 from sdd.schemas.contract import ContractSchema
 from sdd.schemas.state import StateSnapshotSchema
 from sdd.schemas.story import UserStorySchema
@@ -16,7 +16,7 @@ class TestContractSchema:
         """Test basic contract schema creation."""
         data = {
             "phase": 1,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(UTC),
             "contract_id": "test-contract-1",
             "status": "DRAFT",
             "specification": {"title": "Test", "description": "Test"},
@@ -29,7 +29,7 @@ class TestContractSchema:
         """Test that required fields are enforced."""
         data = {
             "phase": 1,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(UTC),
             # Missing contract_id
             "status": "DRAFT",
             "specification": {},
@@ -41,7 +41,7 @@ class TestContractSchema:
         """Test contract with inputs and outputs."""
         data = {
             "phase": 1,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(UTC),
             "contract_id": "test-1",
             "status": "COMMITTED",
             "specification": {},
@@ -73,7 +73,7 @@ class TestStateSnapshotSchema:
         """Test basic state snapshot."""
         data = {
             "phase": 1,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(UTC),
             "current_phase": 1,
             "current_state": "DRAFT",
         }
@@ -85,7 +85,7 @@ class TestStateSnapshotSchema:
         """Test state with completed phases."""
         data = {
             "phase": 2,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(UTC),
             "current_phase": 2,
             "current_state": "REFINED",
             "completed_phases": [0, 1],
@@ -101,7 +101,7 @@ class TestUserStorySchema:
         """Test basic user story."""
         data = {
             "phase": 1,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(UTC),
             "title": "Implement validators",
             "user_persona": "Developer",
             "goal": "Validate artifacts",
@@ -118,7 +118,7 @@ class TestPhaseSpecSchema:
         """Test basic phase spec."""
         data = {
             "phase": 1,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(UTC),
             "title": "Phase 1: Schemas",
             "description": "Build validation layer",
         }
@@ -133,7 +133,7 @@ class TestAuditResultSchema:
         """Test basic audit result."""
         data = {
             "phase": 1,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(UTC),
             "status": "APPROVED",
             "spec_ref": "sdd/artifacts/PHASE_1_SPEC.yaml",
             "recommendation": "Ready for merge",
