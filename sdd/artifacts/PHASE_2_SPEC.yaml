@@ -1,0 +1,183 @@
+phase: 2
+created_at: "2026-05-19T19:30:00Z"
+author: "Claude Code (Auditor)"
+title: "State Machine + CLI — SDD+ Workflow Engine"
+
+description: |
+  Build the state machine that enforces SDD+ phase transitions, and the CLI
+  that operators use to drive the workflow. This is the runtime layer that
+  ties schemas + validators (Phase 1) into a usable tool.
+
+  Authority Matrix is enforced HERE: the state machine rejects illegal
+  transitions (e.g. an Implementer trying to flip REFINED → LOCKED).
+
+user_story: |
+  As an operator (Oscar), I need a CLI so I can:
+  - Run `sdd status` and see which phase/state we're in
+  - Run `sdd validate <artifact>` and get pass/fail with reasons
+  - Run `sdd transition <to_state>` and have illegal moves rejected
+  - Trust that the workflow gates are enforced by code, not by convention
+
+success_criteria:
+  - "State machine with 6 states: DRAFT, REFINED, LOCKED, IMPLEMENTING, AUDITING, COMPLETED"
+  - "Transition table enforcing the Authority Matrix from AGENTS.md/CLAUDE.md"
+  - "CLI commands: status, validate, transition, init (working end-to-end)"
+  - "STATE_SNAPSHOT.yaml updated automatically on every transition"
+  - "≥85% test coverage on state_machine + cli"
+  - "Phase 1 carry-overs fixed (F-P1-001, F-P1-003, F-P1-004, F-P1-005)"
+
+scope:
+  included:
+    - "sdd/state_machine/machine.py — StateMachine class with transition table"
+    - "sdd/state_machine/transitions.py — Allowed transitions + role gating"
+    - "sdd/cli/main.py — Typer app entrypoint"
+    - "sdd/cli/commands/status.py — `sdd status`"
+    - "sdd/cli/commands/validate.py — `sdd validate <path>` (wraps Phase 1 validators)"
+    - "sdd/cli/commands/transition.py — `sdd transition <to_state> --role <implementer|auditor>`"
+    - "sdd/cli/commands/init.py — `sdd init <project_name>` scaffolds new SDD project"
+    - "tests/test_state_machine.py — 15+ tests covering all transitions + role rejection"
+    - "tests/test_cli.py — 8+ tests using typer.testing.CliRunner"
+    - "sdd/artifacts/examples/valid_contract.yaml + invalid_contract.yaml (Phase 1 carry-over)"
+
+  deferred_to_phase_3:
+    - "Skill/agent contracts (Phase 3 territory)"
+    - "Multi-project workspace support"
+    - "Web UI / dashboard"
+    - "Telemetry & metrics emission"
+
+state_machine_spec:
+  states:
+    DRAFT: "Contract being authored, not committed"
+    REFINED: "Contract reviewed by Auditor, ready to lock"
+    LOCKED: "Contract immutable; implementation may begin"
+    IMPLEMENTING: "Code being written against locked contract"
+    AUDITING: "Implementer pushed PR; Auditor running audit loop"
+    COMPLETED: "Audit APPROVED; phase merged to main"
+
+  transitions:
+    - {from: DRAFT,        to: REFINED,      allowed_roles: [implementer, auditor]}
+    - {from: REFINED,      to: LOCKED,       allowed_roles: [auditor]}                # GATE
+    - {from: LOCKED,       to: IMPLEMENTING, allowed_roles: [implementer]}
+    - {from: IMPLEMENTING, to: AUDITING,     allowed_roles: [implementer]}
+    - {from: AUDITING,     to: COMPLETED,    allowed_roles: [auditor]}                # GATE
+    - {from: AUDITING,     to: IMPLEMENTING, allowed_roles: [auditor]}                # reject loop
+    - {from: any,          to: DRAFT,        allowed_roles: [auditor]}                # emergency reset
+
+  invariants:
+    - "Illegal transition raises TransitionError with role + state in message"
+    - "Every successful transition writes new STATE_SNAPSHOT.yaml"
+    - "Auditor-only transitions reject Implementer with explicit error"
+
+cli_spec:
+  commands:
+    - name: "sdd status"
+      description: "Show current phase + state, last transition, pending audit"
+      output: "Human-readable + optional --json flag"
+
+    - name: "sdd validate <artifact_path>"
+      description: "Validate a YAML artifact (delegates to Phase 1 validators)"
+      output: "Exit 0 if valid, exit 1 if invalid, prints errors"
+
+    - name: "sdd transition <to_state> --role <role>"
+      description: "Attempt a state transition; rejects if role not allowed"
+      output: "Confirms new state OR error with reason"
+
+    - name: "sdd init <name>"
+      description: "Scaffold new SDD project with skeleton artifacts"
+      output: "Creates dir + CONTRACT.yaml + STATE_SNAPSHOT.yaml"
+
+constraints:
+  - "Use Typer (already in pyproject.toml) for CLI"
+  - "State machine MUST be pure Python — no external state store (just YAML files)"
+  - "Every transition MUST persist STATE_SNAPSHOT.yaml atomically (write to .tmp + rename)"
+  - "CLI must work on Windows + Unix (no shell-specific assumptions)"
+  - "Coverage target raised to ≥85% (was 80% in Phase 1)"
+  - "No new top-level dependencies without DECISION-XXX entry"
+
+phase_1_carryovers:
+  - id: F-P1-001
+    fix: "Create sdd/artifacts/examples/ with valid_contract.yaml and invalid_contract.yaml"
+
+  - id: F-P1-003
+    fix: "Migrate all schemas from `class Config` to `model_config = ConfigDict(extra='allow')`"
+
+  - id: F-P1-004
+    fix: "Replace datetime.utcnow() with datetime.now(datetime.UTC) in base.py and tests"
+
+  - id: F-P1-005
+    fix: "Raise validate_state.py coverage to ≥80% individually (add tests for YAMLError + generic exception paths)"
+
+acceptance_tests:
+  - name: "test_state_machine_legal_transition"
+    given: "Machine in DRAFT, role=auditor"
+    when: "transition(REFINED)"
+    then: "State becomes REFINED, STATE_SNAPSHOT.yaml updated"
+
+  - name: "test_state_machine_rejects_implementer_locking"
+    given: "Machine in REFINED, role=implementer"
+    when: "transition(LOCKED)"
+    then: "Raises TransitionError mentioning role 'implementer' and state 'LOCKED'"
+
+  - name: "test_cli_status_shows_current_state"
+    given: "STATE_SNAPSHOT.yaml exists with current_state=LOCKED"
+    when: "Runner.invoke(app, ['status'])"
+    then: "Output contains 'LOCKED' and exit code 0"
+
+  - name: "test_cli_validate_invalid_exits_1"
+    given: "Malformed YAML file"
+    when: "Runner.invoke(app, ['validate', path])"
+    then: "Exit code 1, stderr contains error details"
+
+  - name: "test_cli_transition_rejects_wrong_role"
+    given: "State=REFINED"
+    when: "Runner.invoke(app, ['transition', 'LOCKED', '--role', 'implementer'])"
+    then: "Exit code 1, message rejects implementer for LOCKED transition"
+
+  - name: "test_state_snapshot_atomic_write"
+    given: "Existing STATE_SNAPSHOT.yaml"
+    when: "Transition occurs"
+    then: "File never half-written (use .tmp + rename pattern)"
+
+  - name: "test_coverage_threshold"
+    given: "All Phase 2 code"
+    when: "pytest --cov=sdd/state_machine --cov=sdd/cli"
+    then: "Coverage ≥85%"
+
+  - name: "test_carryovers_resolved"
+    given: "Phase 1 carry-overs"
+    when: "pytest --cov + grep for utcnow + grep for 'class Config'"
+    then: "No deprecation warnings, examples/ exists, validate_state.py ≥80%"
+
+dependencies:
+  - "Phase 1 complete and APPROVED (✓ done 2026-05-19)"
+  - "Pydantic schemas importable (✓)"
+  - "Typer installed (✓ in pyproject.toml)"
+
+git_workflow:
+  branch: "feature/phase-2"
+  commit_sequence:
+    - "PHASE 2: Contract committed (PHASE_2_CONTRACT.yaml)"
+    - "PHASE 2: Phase 1 carry-overs (F-P1-001/003/004/005)"
+    - "PHASE 2: State machine core (states + transitions)"
+    - "PHASE 2: CLI commands (status, validate, transition, init)"
+    - "PHASE 2: Tests + coverage ≥85%"
+  pr_target: "main"
+
+blockers: []
+
+notes_for_implementer: |
+  1. READ AGENTS.md before starting. Authority Matrix is non-negotiable.
+  2. WRITE PHASE_2_CONTRACT.yaml FIRST, commit it, THEN code.
+  3. If you discover this spec is wrong, STOP and write a "SPEC revision request"
+     comment in sdd/handoffs/PHASE_2_HANDOFF.md — do not edit the spec yourself.
+  4. Carry-overs from Phase 1 go in the SAME PR (separate commit).
+  5. When done, leave a "READY FOR AUDIT" note in sdd/handoffs/PHASE_2_HANDOFF.md
+     with the test+coverage output pasted in.
+
+notes_for_auditor: |
+  1. Wait for "READY FOR AUDIT" in handoff file.
+  2. Run audit loop: pytest, coverage, conformance vs SPEC, conformance vs CONTRACT.
+  3. Write PHASE_2_AUDIT.yaml with findings.
+  4. APPROVED → merge feature/phase-2 to main. REJECTED → leave findings, Codex iterates.
+
+status: READY_FOR_CODEX
