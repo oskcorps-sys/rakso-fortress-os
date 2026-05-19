@@ -1,20 +1,18 @@
 """Base schemas and common fields for SDD+ artifacts."""
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class BaseArtifact(BaseModel):
     """Base class for all SDD+ artifacts with common metadata."""
 
+    model_config = ConfigDict(extra="allow")
+
     phase: int = Field(..., description="Phase number (0-4+)")
     created_at: datetime = Field(..., description="Creation timestamp ISO8601")
     description: Optional[str] = Field(None, description="Human-readable description")
-
-    class Config:
-        """Pydantic config."""
-        extra = "allow"  # Allow additional fields for flexibility
 
 
 class ErrorItem(BaseModel):
@@ -39,7 +37,7 @@ class ValidationResult(BaseModel):
     schema: str = Field(..., description="Schema name used (contract, state, etc)")
     errors: List[ErrorItem] = Field(default_factory=list, description="Validation errors")
     warnings: List[WarningItem] = Field(default_factory=list, description="Warnings")
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class Requirement(BaseModel):

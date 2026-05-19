@@ -1,0 +1,208 @@
+phase: 2
+contract_id: contract-phase-2-v1
+created_at: "2026-05-19T20:00:00Z"
+status: DRAFT
+
+specification:
+  title: "State Machine + CLI — SDD+ Workflow Engine"
+  description: |
+    Build the state machine that enforces SDD+ phase transitions and the CLI
+    that operators use to drive the workflow. This connects Phase 1 schemas/validators
+    into a working tool with role-based authority gates.
+
+  success_criteria:
+    - "State machine with 6 states: DRAFT, REFINED, LOCKED, IMPLEMENTING, AUDITING, COMPLETED"
+    - "Transition table enforcing role-based authority (Auditor gates: REFINED→LOCKED, AUDITING→COMPLETED)"
+    - "CLI commands: status, validate, transition, init (all functional end-to-end)"
+    - "STATE_SNAPSHOT.yaml updated automatically on every transition"
+    - "≥85% test coverage on sdd/state_machine and sdd/cli"
+    - "Phase 1 carry-overs fixed (F-P1-001/003/004/005)"
+
+inputs:
+  artifact_path:
+    type: "str | Path"
+    required: true
+    description: "Path to YAML artifact for validation or transition"
+    example: "sdd/artifacts/CONTRACT.yaml"
+    constraints: "Must be readable file"
+
+  target_state:
+    type: "str"
+    required: true
+    description: "Target state for transition (DRAFT, REFINED, LOCKED, IMPLEMENTING, AUDITING, COMPLETED)"
+    example: "LOCKED"
+    constraints: "Must be in ALLOWED_TRANSITIONS"
+
+  role:
+    type: "str"
+    required: true
+    description: "Role performing transition (implementer, auditor)"
+    example: "auditor"
+    constraints: "Must be implementer or auditor"
+
+outputs:
+  status_output:
+    type: "dict"
+    description: "Current state snapshot with phase info"
+    example:
+      current_phase: 2
+      current_state: "LOCKED"
+      last_updated: "2026-05-19T20:00:00Z"
+
+  validation_output:
+    type: "dict"
+    description: "Validation result (valid, schema, errors, warnings)"
+    example:
+      valid: true
+      schema: "contract"
+      errors: []
+      warnings: []
+
+  transition_output:
+    type: "dict"
+    description: "Transition result with new state or error"
+    example:
+      success: true
+      from_state: "REFINED"
+      to_state: "LOCKED"
+      timestamp: "2026-05-19T20:00:00Z"
+
+constraints:
+  - "Use Typer for CLI (already in pyproject.toml)"
+  - "State machine must be pure Python — no external state store"
+  - "Every transition persists STATE_SNAPSHOT.yaml atomically (write .tmp + os.replace)"
+  - "CLI must work on Windows + Unix (cross-platform)"
+  - "Coverage ≥85% on new code (sdd/state_machine and sdd/cli)"
+  - "No new top-level dependencies without DECISION-XXX"
+  - "All error messages must cite both role and target state for denied transitions"
+
+assumptions:
+  - "Pydantic v2 schemas from Phase 1 are working and tested"
+  - "Phase 1 validators (validate_contract, validate_state) are importable"
+  - "Phase 1 carry-over fixes (F-P1-001/003/004/005) complete in same phase"
+  - "STATE_SNAPSHOT.yaml template exists and is valid"
+  - "os.replace() available (Python 3.3+)"
+
+acceptance_tests:
+  - name: "test_state_machine_draft_to_refined"
+    given: "Machine in DRAFT state, role=auditor"
+    when: "transition(to_state=REFINED)"
+    then: "State becomes REFINED, STATE_SNAPSHOT.yaml updated with timestamp"
+
+  - name: "test_state_machine_refined_to_locked_auditor_only"
+    given: "Machine in REFINED state, role=implementer"
+    when: "transition(to_state=LOCKED)"
+    then: "Raises TransitionError with message mentioning 'implementer' and 'LOCKED'"
+
+  - name: "test_state_machine_locked_to_implementing"
+    given: "Machine in LOCKED state, role=implementer"
+    when: "transition(to_state=IMPLEMENTING)"
+    then: "State becomes IMPLEMENTING, allowed"
+
+  - name: "test_cli_status_shows_current_state"
+    given: "STATE_SNAPSHOT.yaml with current_state=LOCKED"
+    when: "sdd status is executed"
+    then: "Output contains 'LOCKED' and phase number, exit 0"
+
+  - name: "test_cli_validate_valid_artifact"
+    given: "Valid CONTRACT.yaml"
+    when: "sdd validate sdd/artifacts/CONTRACT.yaml is executed"
+    then: "Output shows valid=true, exit 0"
+
+  - name: "test_cli_validate_invalid_artifact"
+    given: "Malformed YAML file"
+    when: "sdd validate <malformed.yaml> is executed"
+    then: "Output shows errors, exit 1"
+
+  - name: "test_cli_transition_legal"
+    given: "Current state=DRAFT"
+    when: "sdd transition REFINED --role auditor is executed"
+    then: "Output shows state changed to REFINED, exit 0"
+
+  - name: "test_cli_transition_illegal_role"
+    given: "Current state=REFINED"
+    when: "sdd transition LOCKED --role implementer is executed"
+    then: "Output shows error mentioning role rejection, exit 1"
+
+  - name: "test_cli_init_scaffolds_project"
+    given: "Directory does not exist"
+    when: "sdd init my_project is executed"
+    then: "Creates dir with CONTRACT.yaml, STATE_SNAPSHOT.yaml, .gitignore"
+
+  - name: "test_state_snapshot_atomic_write"
+    given: "Existing STATE_SNAPSHOT.yaml"
+    when: "Multiple rapid transitions occur"
+    then: "File is never half-written (atomic .tmp + rename)"
+
+  - name: "test_coverage_threshold"
+    given: "All Phase 2 code"
+    when: "pytest --cov=sdd/state_machine --cov=sdd/cli"
+    then: "Coverage ≥85% on both modules"
+
+defer_to_next_phase:
+  - "Skill/agent contracts (Phase 3)"
+  - "Multi-project workspace support (Phase 3)"
+  - "Web UI / dashboard (Phase 4)"
+  - "Telemetry & metrics emission (Phase 4)"
+  - "Advanced conflict resolution (Phase 4+)"
+
+files_to_create:
+  - "sdd/state_machine/__init__.py"
+  - "sdd/state_machine/machine.py"
+  - "sdd/state_machine/transitions.py"
+  - "sdd/cli/__init__.py"
+  - "sdd/cli/main.py"
+  - "sdd/cli/commands/__init__.py"
+  - "sdd/cli/commands/status.py"
+  - "sdd/cli/commands/validate.py"
+  - "sdd/cli/commands/transition.py"
+  - "sdd/cli/commands/init.py"
+  - "tests/test_state_machine.py"
+  - "tests/test_cli.py"
+  - "sdd/artifacts/examples/valid_contract.yaml"
+  - "sdd/artifacts/examples/invalid_contract.yaml"
+
+phase_1_carryovers:
+  - id: "F-P1-001"
+    task: "Create sdd/artifacts/examples/ with valid_contract.yaml and invalid_contract.yaml"
+    reason: "Missing example artifacts referenced in Phase 1 spec"
+
+  - id: "F-P1-003"
+    task: "Migrate all schemas from `class Config` to `model_config = ConfigDict(extra='allow')`"
+    reason: "Pydantic v2 deprecation warnings"
+
+  - id: "F-P1-004"
+    task: "Replace datetime.utcnow() with datetime.now(datetime.UTC)"
+    reason: "Python 3.12+ deprecation"
+
+  - id: "F-P1-005"
+    task: "Raise validate_state.py individual coverage from 79% to ≥80%"
+    reason: "Phase 1 threshold not met"
+
+git_workflow:
+  branch: "feature/phase-2"
+  commits:
+    - "PHASE 2: Contract committed - state machine + CLI"
+    - "PHASE 2: Phase 1 carry-overs (F-P1-001/003/004/005)"
+    - "PHASE 2: State machine core (machine.py, transitions.py)"
+    - "PHASE 2: CLI implementation (commands + main.py)"
+    - "PHASE 2: Tests + coverage ≥85%"
+  pr_target: "master"
+
+scope_is_locked: true
+commitment_level: HIGH
+---
+
+## SCOPE LOCK
+
+- ✅ 6 states (DRAFT, REFINED, LOCKED, IMPLEMENTING, AUDITING, COMPLETED)
+- ✅ Role-based transitions with Auditor gates
+- ✅ 4 CLI commands (status, validate, transition, init)
+- ✅ ≥85% coverage on new code
+- ✅ Phase 1 carry-over fixes (4 items)
+- ❌ Multi-project support (deferred to Phase 3)
+- ❌ Web UI (deferred to Phase 4)
+- ❌ Advanced telemetry (deferred to Phase 4)
+
+If scope conflict discovered during implementation, stop and signal SPEC_REVISION_REQUEST.
+No code rewrites to work around contract — contract first always.

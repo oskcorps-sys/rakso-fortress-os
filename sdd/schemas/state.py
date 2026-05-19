@@ -1,8 +1,8 @@
 """STATE_SNAPSHOT schema - current project state."""
 
 from typing import Optional, Dict, Any, List
-from datetime import datetime
-from pydantic import BaseModel, Field
+from datetime import datetime, UTC
+from pydantic import BaseModel, Field, ConfigDict
 from sdd.schemas.base import BaseArtifact
 
 
@@ -18,10 +18,12 @@ class StateTransition(BaseModel):
 class StateSnapshotSchema(BaseArtifact):
     """STATE_SNAPSHOT.yaml schema - current state of project."""
 
+    model_config = ConfigDict(extra="allow")
+
     current_phase: int = Field(..., description="Current phase number")
     current_state: str = Field(..., description="Current state (DRAFT, REFINED, LOCKED)")
 
-    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     completed_phases: List[int] = Field(
         default_factory=list,
@@ -34,7 +36,3 @@ class StateSnapshotSchema(BaseArtifact):
     )
 
     locked_at: Optional[datetime] = Field(None, description="When state was locked")
-
-    class Config:
-        """Pydantic config."""
-        extra = "allow"

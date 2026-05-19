@@ -1,0 +1,15 @@
+phase: 1
+contract_id: contract-example-invalid-v1
+# Missing created_at field (required)
+status: INVALID_STATUS
+
+# Missing specification field (required)
+
+constraints:
+  - "This contract is intentionally invalid for testing"
+
+acceptance_tests:
+  - name: "test_example_invalid"
+    given: "Invalid contract data"
+    when: "Validation runs"
+    then: "Returns valid=false with errors"

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sdd.schemas.base import BaseArtifact
 
 
@@ -38,6 +38,8 @@ class AcceptanceTest(BaseModel):
 class ContractSchema(BaseArtifact):
     """CONTRACT.yaml schema - binding specification."""
 
+    model_config = ConfigDict(extra="allow")
+
     contract_id: str = Field(..., description="Unique contract ID")
     status: str = Field(..., description="DRAFT or COMMITTED")
 
@@ -72,7 +74,3 @@ class ContractSchema(BaseArtifact):
         default_factory=list,
         description="Features deferred with rationale"
     )
-
-    class Config:
-        """Pydantic config."""
-        extra = "allow"
