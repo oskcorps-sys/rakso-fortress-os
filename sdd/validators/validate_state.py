@@ -1,23 +1,23 @@
-"""Validator for CONTRACT.yaml artifacts."""
+"""Validator for STATE_SNAPSHOT.yaml artifacts."""
 
 import yaml
 from pathlib import Path
-from typing import Dict, Any, Union
+from typing import Union
 from pydantic import ValidationError
-from sdd.schemas.contract import ContractSchema
+from sdd.schemas.state import StateSnapshotSchema
 from sdd.schemas.base import ValidationResult, ErrorItem
 
 
-def validate_contract(
+def validate_state(
     artifact_path: Union[str, Path],
-    schema_name: str = "contract"
+    schema_name: str = "state"
 ) -> ValidationResult:
     """
-    Validate a CONTRACT.yaml artifact against ContractSchema.
+    Validate a STATE_SNAPSHOT.yaml artifact against StateSnapshotSchema.
 
     Args:
         artifact_path: Path to YAML file or dict
-        schema_name: Schema name (should be 'contract')
+        schema_name: Schema name (should be 'state')
 
     Returns:
         ValidationResult with valid status and errors/warnings
@@ -32,7 +32,7 @@ def validate_contract(
 
         # Validate against schema
         try:
-            ContractSchema.model_validate(data)
+            StateSnapshotSchema.model_validate(data)
             return ValidationResult(
                 valid=True,
                 schema=schema_name,
