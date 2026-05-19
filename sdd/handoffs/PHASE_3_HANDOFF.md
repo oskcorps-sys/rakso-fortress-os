@@ -4,6 +4,11 @@ Append new entries on TOP. Format: `## [ISO8601] [ROLE] [STATUS_TAG]`
 
 ---
 
+## [2026-05-19T23:15:00Z] [AUDITOR] [CONTRACT_LOCKED]
+
+Contract reviewed and locked. Scope is clear, acceptance tests measurable.
+Proceed with implementation.
+
 ## [2026-05-19T23:00:00Z] [AUDITOR] [SPEC_READY]
 
 Phase 3 spec at `sdd/artifacts/PHASE_3_SPEC.yaml`.
