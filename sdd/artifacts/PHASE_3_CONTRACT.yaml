@@ -1,0 +1,143 @@
+phase: 3
+contract_id: contract-phase-3-v1
+created_at: "2026-05-19T23:00:00Z"
+status: DRAFT
+
+specification:
+  title: "Agent Harness — Machine-Enforceable Role Constraints"
+  description: |
+    Make SDD+ a self-enforcing harness: agent roles defined in YAML (not code),
+    audit loop automated, phase sequencing gated, multi-project aware.
+
+  success_criteria:
+    - "AGENTS.yaml defines roles with permissions, file patterns, constraints"
+    - "AgentRoleSchema + AgentsConfigSchema validate AGENTS.yaml via Pydantic v2"
+    - "Transition table reads roles from AGENTS.yaml (falls back to hardcoded if missing)"
+    - "`sdd audit` automates 4-step audit loop, produces AUDIT.yaml"
+    - "`sdd new-phase` creates Phase N+1 only when current phase is COMPLETED"
+    - "`sdd projects list/add/remove` manages multi-project workspace"
+    - "≥85% coverage on new code, all 75 existing tests still pass"
+
+inputs:
+  agents_yaml:
+    type: "file (YAML)"
+    required: false
+    description: "Machine-readable authority matrix defining roles and permissions"
+    constraints: "Falls back to hardcoded defaults if not present"
+
+  workspace_config:
+    type: "file (YAML)"
+    required: false
+    description: "sdd.workspace.yaml at workspace root"
+    constraints: "Created by `sdd projects add`"
+
+outputs:
+  audit_result:
+    type: "file (YAML)"
+    description: "PHASE_N_AUDIT.yaml with verdict, test results, conformance checks"
+
+  phase_artifacts:
+    type: "files"
+    description: "CONTRACT template + HANDOFF log for next phase"
+
+constraints:
+  - "Backwards-compatible: existing projects without AGENTS.yaml keep working"
+  - "No new top-level dependencies without DECISION entry"
+  - "`sdd audit` works standalone (no AGENTS.yaml required)"
+  - "Coverage ≥85% on sdd/schemas/agent.py, sdd/workspace.py, new CLI commands"
+  - "All 75 existing tests must continue passing"
+  - "AGENTS.yaml is project-level (inside project dir), workspace config is above projects"
+
+assumptions:
+  - "Phase 2 state machine and CLI are stable (75/75 tests)"
+  - "Typer CLI framework supports subcommands (sdd projects list)"
+  - "pytest + coverage are available in test environment"
+
+acceptance_tests:
+  - name: "test_agents_yaml_loads"
+    given: "Valid AGENTS.yaml with implementer + auditor roles"
+    when: "AgentsConfigSchema validates"
+    then: "Both roles accessible, permissions parsed correctly"
+
+  - name: "test_agents_yaml_enforces_transitions"
+    given: "StateMachine loads AGENTS.yaml"
+    when: "Implementer tries REFINED->LOCKED"
+    then: "TransitionError raised — implementer not in allowed_transitions"
+
+  - name: "test_agents_yaml_fallback"
+    given: "No AGENTS.yaml file exists"
+    when: "StateMachine initializes"
+    then: "Falls back to Phase 2 hardcoded transitions, no error"
+
+  - name: "test_audit_command_passes"
+    given: "Project with all tests passing, coverage met"
+    when: "sdd audit --role auditor"
+    then: "Creates AUDIT.yaml with APPROVED verdict, exit 0"
+
+  - name: "test_audit_command_fails"
+    given: "Project with test failures"
+    when: "sdd audit --role auditor"
+    then: "Creates AUDIT.yaml with REJECTED verdict, exit 1"
+
+  - name: "test_new_phase_succeeds"
+    given: "current_state=COMPLETED, current_phase=2"
+    when: "sdd new-phase"
+    then: "Creates PHASE_3_CONTRACT.yaml template, PHASE_3_HANDOFF.md, state=DRAFT phase=3"
+
+  - name: "test_new_phase_blocked"
+    given: "current_state=IMPLEMENTING"
+    when: "sdd new-phase"
+    then: "Error message, exit 1"
+
+  - name: "test_projects_list"
+    given: "sdd.workspace.yaml with 2 projects"
+    when: "sdd projects list"
+    then: "Shows name, path, phase, state for each project"
+
+  - name: "test_projects_add"
+    given: "Existing SDD project at ./my-project"
+    when: "sdd projects add ./my-project"
+    then: "Added to sdd.workspace.yaml"
+
+  - name: "test_coverage_threshold"
+    given: "All Phase 3 code"
+    when: "pytest --cov on new modules"
+    then: "≥85% on each new module"
+
+files_to_create:
+  - "AGENTS.yaml"
+  - "sdd/schemas/agent.py"
+  - "sdd/workspace.py"
+  - "sdd/cli/commands/audit.py"
+  - "sdd/cli/commands/new_phase.py"
+  - "sdd/cli/commands/projects.py"
+  - "tests/test_agent_schema.py"
+  - "tests/test_audit_command.py"
+  - "tests/test_new_phase.py"
+  - "tests/test_workspace.py"
+
+files_to_modify:
+  - "sdd/state_machine/transitions.py — load roles from AGENTS.yaml"
+  - "sdd/cli/main.py — register new commands"
+
+git_workflow:
+  branch: "feature/phase-3"
+  commits:
+    - "PHASE 3: Spec + Contract"
+    - "PHASE 3: Agent schema + AGENTS.yaml"
+    - "PHASE 3: Refactor transitions to load from AGENTS.yaml"
+    - "PHASE 3: sdd audit command"
+    - "PHASE 3: sdd new-phase command"
+    - "PHASE 3: Multi-project workspace + sdd projects"
+    - "PHASE 3: Tests + coverage ≥85%"
+  pr_target: "master"
+
+defer_to_next_phase:
+  - "Web UI / dashboard (Phase 4)"
+  - "Telemetry & metrics (Phase 4)"
+  - "Git integration — auto-branch, auto-commit (Phase 4)"
+  - "pip packaging / PyPI distribution (Phase 4)"
+  - "File pattern enforcement at commit time (Phase 4)"
+
+scope_is_locked: false
+commitment_level: DRAFT
