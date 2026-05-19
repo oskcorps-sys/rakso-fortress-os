@@ -1,46 +1,14 @@
-# STATE_SNAPSHOT.yaml - Current state of the SDD+ project
-#
-# Records: which phase, which state, last transition, next steps.
-# Updated only via CLI transition commands (Phase 2+).
-# Single source of truth for "where are we?"
-
-version: 1.0
-last_updated: null  # YYYY-MM-DDTHH:MM:SSZ
-
-# Current phase
-current_phase: 0
-current_state: BOOTSTRAP  # BOOTSTRAP, DRAFT, REFINED, LOCKED, SUPERSEDED
-
-# Phase history (append-only)
-phase_history:
-  - phase: 0
-    state: BOOTSTRAP
-    entered_at: null
-    locked_at: null
-    git_tag: null
-    summary: "Repository structure created, blueprints deployed"
-
-# Last transition (for human context)
-last_transition:
-  from_state: null
-  to_state: null
-  timestamp: null
-  triggered_by: "human"  # human | codex | claude-code | automation
-  reason: "Phase N complete, transitioning to Phase N+1"
-
-# Next phase preview
-next_phase: 1
-next_deliverables:
-  - "Pydantic schemas"
-  - "Validators for contract, state, conformance"
-  - "Test suite with ≥80% coverage"
-
-# Links to active artifacts
-active_artifacts:
-  contract: "sdd/artifacts/CONTRACT.yaml"
-  user_story: "sdd/artifacts/USER_STORY.yaml"
-  audit_report: "sdd/artifacts/PHASE_0_AUDIT.yaml"
-  test_report: "sdd/artifacts/TEST_REPORT.yaml"
-
-# Notes for next phase
-notes: "Confirm DECISION-0007 (repo location) before Phase 1 begins."
+phase: 3
+created_at: "2026-05-19T23:00:00Z"
+description: "Current state of the SDD+ project"
+current_phase: 3
+current_state: AUDITING
+last_updated: "2026-05-19T23:00:00Z"
+completed_phases:
+  - 0
+  - 1
+  - 2
+metadata:
+  branch: "feature/phase-3"
+  description: "Agent Harness — Machine-Enforceable Role Constraints"
+locked_at: null
