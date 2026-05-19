@@ -1,6 +1,11 @@
 """Transition table and role-based authority enforcement."""
 
-from typing import Set, Tuple, List
+import warnings
+import yaml
+from pathlib import Path
+from typing import Dict, List, Optional, Set, Tuple
+
+from sdd.schemas.agent import AgentsConfigSchema, build_transition_table
 
 
 class TransitionError(Exception):
@@ -34,15 +39,14 @@ AUDITOR = "auditor"
 
 ALL_ROLES = {IMPLEMENTER, AUDITOR}
 
-# Transition table: (from_state, to_state) -> [allowed_roles]
+# Hardcoded fallback transition table
 ALLOWED_TRANSITIONS = {
     (DRAFT, REFINED): [IMPLEMENTER, AUDITOR],
-    (REFINED, LOCKED): [AUDITOR],  # GATE: auditor only
+    (REFINED, LOCKED): [AUDITOR],
     (LOCKED, IMPLEMENTING): [IMPLEMENTER],
     (IMPLEMENTING, AUDITING): [IMPLEMENTER],
-    (AUDITING, COMPLETED): [AUDITOR],  # GATE: auditor only
-    (AUDITING, IMPLEMENTING): [AUDITOR],  # reject loop: auditor can send back
-    # Emergency reset: any state to DRAFT (auditor only)
+    (AUDITING, COMPLETED): [AUDITOR],
+    (AUDITING, IMPLEMENTING): [AUDITOR],
     (DRAFT, DRAFT): [AUDITOR],
     (REFINED, DRAFT): [AUDITOR],
     (LOCKED, DRAFT): [AUDITOR],
@@ -52,18 +56,38 @@ ALLOWED_TRANSITIONS = {
 }
 
 
-def is_transition_allowed(from_state: str, to_state: str, role: str) -> Tuple[bool, List[str]]:
-    """
-    Check if a transition is allowed for a given role.
+def load_agents_config(agents_yaml_path: str = "AGENTS.yaml") -> Optional[AgentsConfigSchema]:
+    """Load and validate AGENTS.yaml. Returns None if file missing or invalid."""
+    path = Path(agents_yaml_path)
+    if not path.exists():
+        return None
 
-    Args:
-        from_state: Current state
-        to_state: Target state
-        role: Requester role (implementer or auditor)
+    try:
+        with open(path, "r") as f:
+            data = yaml.safe_load(f)
+        return AgentsConfigSchema.model_validate(data)
+    except Exception as e:
+        warnings.warn(f"Failed to load AGENTS.yaml: {e}", stacklevel=2)
+        return None
 
-    Returns:
-        Tuple of (is_allowed: bool, allowed_roles: List[str])
-    """
+
+def get_transition_table(
+    agents_yaml_path: str = "AGENTS.yaml",
+) -> Dict[Tuple[str, str], List[str]]:
+    """Get transition table from AGENTS.yaml, falling back to hardcoded defaults."""
+    config = load_agents_config(agents_yaml_path)
+    if config is not None:
+        return build_transition_table(config)
+    return ALLOWED_TRANSITIONS
+
+
+def is_transition_allowed(
+    from_state: str,
+    to_state: str,
+    role: str,
+    agents_yaml_path: str = "AGENTS.yaml",
+) -> Tuple[bool, List[str]]:
+    """Check if a transition is allowed for a given role."""
     if from_state not in ALL_STATES:
         return False, []
     if to_state not in ALL_STATES:
@@ -71,6 +95,7 @@ def is_transition_allowed(from_state: str, to_state: str, role: str) -> Tuple[bo
     if role not in ALL_ROLES:
         return False, []
 
-    allowed_roles = ALLOWED_TRANSITIONS.get((from_state, to_state), [])
+    table = get_transition_table(agents_yaml_path)
+    allowed_roles = table.get((from_state, to_state), [])
     is_allowed = role in allowed_roles
     return is_allowed, allowed_roles
