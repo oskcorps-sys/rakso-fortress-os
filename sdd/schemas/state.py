@@ -1,7 +1,7 @@
 """STATE_SNAPSHOT schema - current project state."""
 
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, UTC
 from pydantic import BaseModel, Field, ConfigDict
 from sdd.schemas.base import BaseArtifact
 
@@ -23,7 +23,7 @@ class StateSnapshotSchema(BaseArtifact):
     current_phase: int = Field(..., description="Current phase number")
     current_state: str = Field(..., description="Current state (DRAFT, REFINED, LOCKED)")
 
-    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     completed_phases: List[int] = Field(
         default_factory=list,
