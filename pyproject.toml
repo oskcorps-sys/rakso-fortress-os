@@ -32,7 +32,7 @@ dev = [
 ]
 
 [project.scripts]
-sdd = "sdd.tools.sdd:app"
+sdd = "sdd.cli.main:app"
 
 [tool.uv]
 python = "3.11"
