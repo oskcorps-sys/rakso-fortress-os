@@ -1,0 +1,156 @@
+phase: 1
+title: "Schemas + Validators — SDD+ Foundation"
+description: |
+  Build the validation layer for SDD+. Define 5 core Pydantic schemas
+  that enforce contract structure, state snapshots, and artifact validation.
+  Implement 2 validators that can validate against these schemas in real YAML.
+
+  This phase establishes the spec-first discipline: all future code must
+  match schemas, all artifacts must pass validators.
+
+user_story: |
+  As an implementer, I need validators so I can:
+  - Automatically check that CONTRACT.yaml matches the schema
+  - Validate that STATE_SNAPSHOT.yaml transitions are valid
+  - Catch schema violations early (before code runs)
+
+success_criteria:
+  - "5 Pydantic schemas defined and tested"
+  - "2 validators implemented (contract_validator, state_validator)"
+  - "All validators pass against existing artifacts"
+  - "≥80% test coverage on validators"
+  - "Example artifacts in /examples/ validate successfully"
+
+scope:
+  included:
+    - "Pydantic v2 schemas for: CONTRACT, STATE_SNAPSHOT, USER_STORY, PHASE_SPEC, AUDIT_RESULT"
+    - "Validator: validate_contract.py (check CONTRACT.yaml structure)"
+    - "Validator: validate_state.py (check STATE_SNAPSHOT.yaml)"
+    - "Test suite: test_schemas.py, test_validators.py (15+ tests, ≥80% coverage)"
+    - "Examples: /sdd/artifacts/examples/ with valid + invalid artifacts"
+    - "CLI command: `sdd validate <artifact_path>`"
+
+  deferred_to_phase_2:
+    - "State machine transition validation (deferred: requires STATE_MACHINE setup)"
+    - "Audit result schema (deferred: depends on audit structure)"
+    - "Custom error formatting (deferred: nice-to-have)"
+
+inputs:
+  - name: "Artifact path (YAML file)"
+    type: "str | Path"
+    required: true
+    description: "Path to a YAML artifact to validate"
+    example: "sdd/artifacts/CONTRACT.yaml"
+
+  - name: "Schema name"
+    type: "str"
+    required: false
+    description: "Which schema to validate against (contract, state, story, spec)"
+    example: "contract"
+
+outputs:
+  - name: "Validation result"
+    type: "dict"
+    description: |
+      {
+        "valid": bool,
+        "schema": "schema_name",
+        "errors": [{"field": str, "message": str}],
+        "warnings": [{"field": str, "message": str}]
+      }
+    example: |
+      {
+        "valid": true,
+        "schema": "contract",
+        "errors": [],
+        "warnings": []
+      }
+
+constraints:
+  - "Must use Pydantic v2 (not v1)"
+  - "Schemas must be in /sdd/schemas/ as separate .py files"
+  - "Validators must return consistent output format"
+  - "All validation errors must cite which field failed and why"
+  - "Schemas must support YAML input (not just JSON)"
+
+acceptance_tests:
+  - name: "test_contract_schema_valid"
+    given: "Valid CONTRACT.yaml from artifacts/"
+    when: "validate_contract.py called"
+    then: "Returns valid=true, errors=[]"
+
+  - name: "test_contract_schema_missing_field"
+    given: "CONTRACT.yaml missing 'specification' field"
+    when: "validate_contract.py called"
+    then: "Returns valid=false, errors contain 'specification' field name"
+
+  - name: "test_state_schema_valid"
+    given: "Valid STATE_SNAPSHOT.yaml"
+    when: "validate_state.py called"
+    then: "Returns valid=true, no errors"
+
+  - name: "test_validator_cli_integration"
+    given: "CLI command 'sdd validate sdd/artifacts/CONTRACT.yaml'"
+    when: "Command executed"
+    then: "Outputs validation result in human-readable format"
+
+  - name: "test_coverage_threshold"
+    given: "All validator code"
+    when: "pytest --cov run"
+    then: "Coverage ≥80%"
+
+decisions:
+  - id: "DECISION-P1-001"
+    title: "Pydantic v2 for strict validation"
+    context: "Pydantic v2 has better error messages and stricter validation"
+    choice: "Use Pydantic v2 exclusively"
+
+  - id: "DECISION-P1-002"
+    title: "YAML-first validation (not JSON)"
+    context: "All SDD+ artifacts are YAML; validators should read YAML natively"
+    choice: "Use pydantic-yaml to validate YAML files directly"
+
+phase_dependencies:
+  - "Phase 0 must be complete (repo structure, git initialized)"
+
+assumptions:
+  - "Artifact examples exist in /sdd/artifacts/"
+  - "Test framework (pytest) is installed"
+  - "Pydantic v2 is available"
+
+blockers: []
+
+next_phase_context:
+  - "Phase 2 will use these validators in STATE_MACHINE logic"
+  - "Phase 3 will extend validators for Skill contracts"
+
+technical_notes:
+  - "Validators should be idempotent (same input → same output)"
+  - "Use composition: validators call schema validation, then custom checks"
+  - "Error messages must help user fix the problem (not just say 'invalid')"
+
+---
+## For Codex (Implementer)
+
+Once you read this spec:
+1. Write CONTRACT.yaml committing to:
+   - 5 schemas to implement
+   - 2 validators with input/output specs
+   - Test coverage target: ≥80%
+   - No scope creep
+2. Implement code matching CONTRACT
+3. Push PR feature/phase-1
+4. Wait for audit
+
+For Claude Code (Auditor):
+Once Codex pushes PR:
+1. Verify tests pass (pytest)
+2. Check schemas match Pydantic v2 patterns
+3. Validate example artifacts pass validators
+4. Conformance check: code matches CONTRACT
+5. Fill PHASE_1_AUDIT.yaml
+
+---
+Generated: 2026-05-19
+Owner: Oscar Franco (human)
+Status: READY FOR PHASE 1
