@@ -31,7 +31,7 @@ class StateMachine:
         if not Path(self.state_file).exists():
             raise FileNotFoundError(f"State file not found: {self.state_file}")
 
-        with open(self.state_file, "r") as f:
+        with open(self.state_file, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         self._state = StateSnapshotSchema.model_validate(data)
@@ -45,8 +45,8 @@ class StateMachine:
         state_dir.mkdir(parents=True, exist_ok=True)
 
         tmp_file = f"{self.state_file}.tmp"
-        with open(tmp_file, "w") as f:
-            yaml.dump(state_dict, f, default_flow_style=False, sort_keys=False)
+        with open(tmp_file, "w", encoding="utf-8") as f:
+            yaml.dump(state_dict, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
         # Atomic rename
         os.replace(tmp_file, self.state_file)

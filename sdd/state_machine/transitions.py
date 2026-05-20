@@ -63,7 +63,7 @@ def load_agents_config(agents_yaml_path: str = "AGENTS.yaml") -> Optional[Agents
         return None
 
     try:
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
         return AgentsConfigSchema.model_validate(data)
     except Exception as e:

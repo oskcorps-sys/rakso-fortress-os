@@ -25,7 +25,7 @@ def validate_contract(
     try:
         # Load YAML
         if isinstance(artifact_path, (str, Path)):
-            with open(artifact_path, 'r') as f:
+            with open(artifact_path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f)
         else:
             data = artifact_path

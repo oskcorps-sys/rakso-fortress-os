@@ -100,6 +100,7 @@ acceptance_tests:
     then: "Added to sdd.workspace.yaml"
 
   - name: "test_coverage_threshold"
+    kind: "criterion"  # verified by audit's coverage step, not a test function
     given: "All Phase 3 code"
     when: "pytest --cov on new modules"
     then: "≥85% on each new module"

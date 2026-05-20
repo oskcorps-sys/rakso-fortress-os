@@ -55,7 +55,7 @@ def audit(
     coverage_pct = 0.0
     if Path(cov_json).exists():
         try:
-            with open(cov_json, "r") as f:
+            with open(cov_json, "r", encoding="utf-8") as f:
                 cov_data = json.load(f)
             coverage_pct = cov_data.get("totals", {}).get("percent_covered", 0.0)
         except Exception:
@@ -82,7 +82,7 @@ def audit(
 
     if Path(spec_path).exists():
         try:
-            with open(spec_path, "r") as f:
+            with open(spec_path, "r", encoding="utf-8") as f:
                 spec_data = yaml.safe_load(f)
             included = []
             scope = spec_data.get("scope", {})
@@ -111,7 +111,7 @@ def audit(
 
     if Path(contract_path).exists():
         try:
-            with open(contract_path, "r") as f:
+            with open(contract_path, "r", encoding="utf-8") as f:
                 contract_data = yaml.safe_load(f)
             acceptance_tests = contract_data.get("acceptance_tests", [])
             test_names = set()
@@ -124,7 +124,12 @@ def audit(
                         test_names.add(name)
 
             for at in acceptance_tests:
-                name = at.get("name", "") if isinstance(at, dict) else ""
+                if not isinstance(at, dict):
+                    continue
+                # Skip criteria verified by other audit steps (coverage, conformance, etc.)
+                if at.get("kind") == "criterion":
+                    continue
+                name = at.get("name", "")
                 if name and name not in test_names:
                     missing_tests.append(name)
         except Exception:
@@ -160,13 +165,13 @@ def audit(
     audit_file = f"sdd/artifacts/PHASE_{audit_phase}_AUDIT.yaml"
     Path(audit_file).parent.mkdir(parents=True, exist_ok=True)
     tmp_file = f"{audit_file}.tmp"
-    with open(tmp_file, "w") as f:
-        yaml.dump(audit_data, f, default_flow_style=False, sort_keys=False)
+    with open(tmp_file, "w", encoding="utf-8") as f:
+        yaml.dump(audit_data, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
     os.replace(tmp_file, audit_file)
 
     # Output
     if verdict == "APPROVED":
-        typer.echo(f"APPROVED Phase {audit_phase} — {coverage_pct:.1f}% coverage, all tests pass")
+        typer.echo(f"APPROVED Phase {audit_phase} - {coverage_pct:.1f}% coverage, all tests pass")
     else:
         typer.echo(f"REJECTED Phase {audit_phase}", err=True)
         for finding in findings:

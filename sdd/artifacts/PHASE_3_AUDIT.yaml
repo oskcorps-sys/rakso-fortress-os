@@ -1,6 +1,6 @@
 audit_id: audit-phase-3-v1
 phase: 3
-timestamp: '2026-05-19T23:21:15.986531+00:00'
+timestamp: '2026-05-20T00:16:45.394728+00:00'
 auditor: auditor
 verdict: APPROVED
 steps:
@@ -8,37 +8,14 @@ steps:
     passed: true
     returncode: 0
   coverage:
-    percent: 92.4
+    percent: 92.3
     threshold: 85.0
     passed: true
   spec_conformance:
-    passed: false
-    missing_files:
-    - "sdd/schemas/agent.py \xE2\u20AC\u201D AgentRoleSchema, AgentsConfigSchema (Pydantic\
-      \ v2)"
-    - "AGENTS.yaml \xE2\u20AC\u201D machine-readable authority matrix at project root"
-    - "sdd/state_machine/transitions.py \xE2\u20AC\u201D refactor to load roles from\
-      \ AGENTS.yaml"
-    - "sdd/cli/commands/audit.py \xE2\u20AC\u201D `sdd audit` command"
-    - "sdd/cli/commands/new_phase.py \xE2\u20AC\u201D `sdd new-phase` command"
-    - "sdd/cli/commands/projects.py \xE2\u20AC\u201D `sdd projects list/add/remove`"
-    - "sdd/workspace.py \xE2\u20AC\u201D multi-project workspace config (sdd.workspace.yaml)"
-    - "tests/test_agent_schema.py \xE2\u20AC\u201D schema validation tests"
-    - "tests/test_audit_command.py \xE2\u20AC\u201D audit CLI tests"
-    - "tests/test_new_phase.py \xE2\u20AC\u201D new-phase CLI tests"
-    - "tests/test_workspace.py \xE2\u20AC\u201D workspace management tests"
+    passed: true
+    missing_files: []
   contract_conformance:
-    passed: false
-    missing_tests:
-    - test_coverage_threshold
-findings:
-- severity: MEDIUM
-  description: "Missing spec deliverables: sdd/schemas/agent.py \xE2\u20AC\u201D AgentRoleSchema,\
-    \ AgentsConfigSchema (Pydantic v2), AGENTS.yaml \xE2\u20AC\u201D machine-readable\
-    \ authority matrix at project root, sdd/state_machine/transitions.py \xE2\u20AC\
-    \u201D refactor to load roles from AGENTS.yaml, sdd/cli/commands/audit.py \xE2\
-    \u20AC\u201D `sdd audit` command, sdd/cli/commands/new_phase.py \xE2\u20AC\u201D\
-    \ `sdd new-phase` command"
-- severity: MEDIUM
-  description: 'Missing acceptance tests: test_coverage_threshold'
-coverage_percent: 92.4
+    passed: true
+    missing_tests: []
+findings: []
+coverage_percent: 92.3

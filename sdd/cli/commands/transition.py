@@ -17,18 +17,18 @@ def transition(
         machine = StateMachine()
         result = machine.transition(to_state, role)
 
-        typer.echo(f"✓ Transition successful: {result['from_state']} → {result['to_state']}")
+        typer.echo(f"OK: Transition successful: {result['from_state']} -> {result['to_state']}")
         typer.echo(f"  Timestamp: {result['timestamp']}")
 
     except TransitionError as e:
-        typer.echo(f"✗ Transition denied: {e}", err=True)
+        typer.echo(f"FAIL: Transition denied: {e}", err=True)
         raise typer.Exit(1)
     except ValueError as e:
-        typer.echo(f"✗ Error: {e}", err=True)
+        typer.echo(f"FAIL: Error: {e}", err=True)
         raise typer.Exit(1)
     except FileNotFoundError as e:
-        typer.echo(f"✗ Error: {e}", err=True)
+        typer.echo(f"FAIL: Error: {e}", err=True)
         raise typer.Exit(1)
     except Exception as e:
-        typer.echo(f"✗ Unexpected error: {e}", err=True)
+        typer.echo(f"FAIL: Unexpected error: {e}", err=True)
         raise typer.Exit(1)

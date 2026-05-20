@@ -41,8 +41,8 @@ def init(
     }
 
     contract_path = project_dir / "CONTRACT.yaml"
-    with open(contract_path, "w") as f:
-        yaml.dump(contract_template, f, default_flow_style=False, sort_keys=False)
+    with open(contract_path, "w", encoding="utf-8") as f:
+        yaml.dump(contract_template, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
     # Create STATE_SNAPSHOT.yaml template
     state_template = {
@@ -54,8 +54,8 @@ def init(
     }
 
     state_path = project_dir / "STATE_SNAPSHOT.yaml"
-    with open(state_path, "w") as f:
-        yaml.dump(state_template, f, default_flow_style=False, sort_keys=False)
+    with open(state_path, "w", encoding="utf-8") as f:
+        yaml.dump(state_template, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
     # Create .gitignore
     gitignore_content = """*.pyc
@@ -74,10 +74,10 @@ venv/
 """
 
     gitignore_path = project_dir / ".gitignore"
-    with open(gitignore_path, "w") as f:
+    with open(gitignore_path, "w", encoding="utf-8") as f:
         f.write(gitignore_content)
 
-    typer.echo(f"✓ Project scaffolded: {project_name}/")
+    typer.echo(f"OK: Project scaffolded: {project_name}/")
     typer.echo(f"  - CONTRACT.yaml")
     typer.echo(f"  - STATE_SNAPSHOT.yaml")
     typer.echo(f"  - .gitignore")

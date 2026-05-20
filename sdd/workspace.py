@@ -46,7 +46,7 @@ def save_workspace(data: Dict[str, Any], path: Optional[str] = None) -> Path:
 
     tmp = f"{ws_path}.tmp"
     with open(tmp, "w", encoding="utf-8") as f:
-        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
     os.replace(tmp, str(ws_path))
     return ws_path
 

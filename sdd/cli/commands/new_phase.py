@@ -57,8 +57,8 @@ def new_phase(
         }
         Path(contract_path).parent.mkdir(parents=True, exist_ok=True)
         tmp = f"{contract_path}.tmp"
-        with open(tmp, "w") as f:
-            yaml.dump(contract_template, f, default_flow_style=False, sort_keys=False)
+        with open(tmp, "w", encoding="utf-8") as f:
+            yaml.dump(contract_template, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
         import os
         os.replace(tmp, contract_path)
 

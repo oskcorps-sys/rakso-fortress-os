@@ -41,10 +41,10 @@ def validate(
 
     # Output
     if result.valid:
-        typer.echo(f"✓ {artifact_path} is valid ({result.schema})")
+        typer.echo(f"OK: {artifact_path} is valid ({result.schema})")
         raise typer.Exit(0)
     else:
-        typer.echo(f"✗ {artifact_path} is invalid ({result.schema})", err=True)
+        typer.echo(f"FAIL: {artifact_path} is invalid ({result.schema})", err=True)
         for error in result.errors:
             typer.echo(f"  - {error.field}: {error.message}", err=True)
         raise typer.Exit(1)

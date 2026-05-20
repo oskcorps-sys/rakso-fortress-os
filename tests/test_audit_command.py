@@ -207,6 +207,89 @@ class TestAuditCommand:
         assert audit_data["steps"]["contract_conformance"]["passed"] is False
         assert "test_totally_missing" in audit_data["steps"]["contract_conformance"]["missing_tests"]
 
+    def test_audit_skips_criterion_kind_acceptance_tests(self, monkeypatch, tmp_path):
+        """acceptance_tests entries with kind: criterion should not be flagged as missing functions."""
+        state_path = str(tmp_path / "sdd" / "artifacts" / "STATE_SNAPSHOT.yaml")
+        _create_state_file(state_path, state="AUDITING", phase=1)
+        monkeypatch.setattr("sdd.state_machine.machine.StateMachine.STATE_FILE", state_path)
+        monkeypatch.chdir(tmp_path)
+
+        contract_data = {
+            "acceptance_tests": [
+                {"name": "test_real_function"},
+                {"name": "test_coverage_threshold", "kind": "criterion"},
+            ],
+        }
+        contract_path = tmp_path / "sdd" / "artifacts" / "PHASE_1_CONTRACT.yaml"
+        with open(contract_path, "w", encoding="utf-8") as f:
+            yaml.dump(contract_data, f)
+
+        tests_dir = tmp_path / "tests"
+        tests_dir.mkdir()
+        (tests_dir / "test_example.py").write_text(
+            "def test_real_function():\n    pass\n", encoding="utf-8"
+        )
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        cov_data = {"totals": {"percent_covered": 90.0}}
+
+        def mock_run(cmd, **kwargs):
+            for arg in cmd:
+                if arg.startswith("--cov-report=json:"):
+                    with open(arg.split(":", 1)[1], "w") as f:
+                        json.dump(cov_data, f)
+            return mock_result
+
+        monkeypatch.setattr("subprocess.run", mock_run)
+
+        result = runner.invoke(app, ["audit", "--role", "auditor", "--phase", "1"])
+        assert result.exit_code == 0
+
+        audit_file = tmp_path / "sdd" / "artifacts" / "PHASE_1_AUDIT.yaml"
+        with open(audit_file) as f:
+            audit_data = yaml.safe_load(f)
+        assert audit_data["steps"]["contract_conformance"]["passed"] is True
+        assert audit_data["steps"]["contract_conformance"]["missing_tests"] == []
+
+    def test_audit_unicode_round_trip_in_spec(self, monkeypatch, tmp_path):
+        """SPEC.yaml with em-dash separator should be parsed correctly when files exist."""
+        state_path = str(tmp_path / "sdd" / "artifacts" / "STATE_SNAPSHOT.yaml")
+        _create_state_file(state_path, state="AUDITING", phase=1)
+        monkeypatch.setattr("sdd.state_machine.machine.StateMachine.STATE_FILE", state_path)
+        monkeypatch.chdir(tmp_path)
+
+        target_file = tmp_path / "src" / "foo.py"
+        target_file.parent.mkdir(parents=True)
+        target_file.write_text("# stub\n", encoding="utf-8")
+
+        spec_data = {"scope": {"included": ["src/foo.py — the foo module"]}}
+        spec_path = tmp_path / "sdd" / "artifacts" / "PHASE_1_SPEC.yaml"
+        with open(spec_path, "w", encoding="utf-8") as f:
+            yaml.dump(spec_data, f, allow_unicode=True)
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        cov_data = {"totals": {"percent_covered": 90.0}}
+
+        def mock_run(cmd, **kwargs):
+            for arg in cmd:
+                if arg.startswith("--cov-report=json:"):
+                    with open(arg.split(":", 1)[1], "w") as f:
+                        json.dump(cov_data, f)
+            return mock_result
+
+        monkeypatch.setattr("subprocess.run", mock_run)
+
+        result = runner.invoke(app, ["audit", "--role", "auditor", "--phase", "1"])
+        assert result.exit_code == 0
+
+        audit_file = tmp_path / "sdd" / "artifacts" / "PHASE_1_AUDIT.yaml"
+        with open(audit_file, encoding="utf-8") as f:
+            audit_data = yaml.safe_load(f)
+        assert audit_data["steps"]["spec_conformance"]["passed"] is True
+        assert audit_data["steps"]["spec_conformance"]["missing_files"] == []
+
     def test_audit_low_coverage_rejected(self, monkeypatch, tmp_path):
         state_path = str(tmp_path / "sdd" / "artifacts" / "STATE_SNAPSHOT.yaml")
         _create_state_file(state_path, state="AUDITING", phase=1)
