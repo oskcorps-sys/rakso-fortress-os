@@ -47,15 +47,16 @@ jobs:
       - name: pip-audit (CVEs)
         run: pip-audit --format=columns
 
-  codeql:
-    name: CodeQL Analysis
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
-        with:
-          languages: python
-      - uses: github/codeql-action/analyze@v3
+  # CodeQL Analysis — enable when repo is public (free) or with GitHub Advanced Security (paid)
+  # codeql:
+  #   name: CodeQL Analysis
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: github/codeql-action/init@v3
+  #       with:
+  #         languages: python
+  #     - uses: github/codeql-action/analyze@v3
 
   quality:
     name: Code Quality (radon)
