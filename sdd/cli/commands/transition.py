@@ -11,6 +11,7 @@ app = typer.Typer()
 def transition(
     to_state: str = typer.Argument(..., help="Target state (DRAFT, REFINED, LOCKED, IMPLEMENTING, AUDITING, COMPLETED)"),
     role: str = typer.Option(..., "--role", "-r", help="Role performing transition (implementer or auditor)"),
+    executor: str = typer.Option("any", "--executor", "-e", help="Executor for this action (e.g. claude, gpt-4, llama, human)"),
 ):
     """Transition to a new state."""
     try:
@@ -29,6 +30,7 @@ def transition(
                 role=role,
                 from_state=result["from_state"],
                 to_state=result["to_state"],
+                executor=executor,
             )
         except Exception:
             pass

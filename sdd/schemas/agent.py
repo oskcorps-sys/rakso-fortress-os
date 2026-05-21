@@ -11,6 +11,10 @@ class AgentRoleSchema(BaseModel):
     """Single agent role with permissions and constraints."""
 
     description: str = Field(..., description="Role description")
+    executor: str = Field(
+        "any",
+        description="Executor for this role (e.g. 'claude', 'gpt-4', 'llama', 'gemini', 'human', 'any')",
+    )
     allowed_transitions: List[str] = Field(
         default_factory=list, description="Transition strings like 'DRAFT->REFINED'"
     )

@@ -108,6 +108,7 @@ def emit_transition(
     role: str,
     from_state: str,
     to_state: str,
+    executor: str | None = None,
     metrics_root: Path | None = None,
 ) -> None:
     """Append a sdd.phase.transition event to transitions.jsonl."""
@@ -116,6 +117,7 @@ def emit_transition(
         "timestamp": datetime.now(UTC).isoformat(),
         "phase": phase,
         "role": role,
+        "executor": executor,
         "from_state": from_state,
         "to_state": to_state,
     }
@@ -128,6 +130,7 @@ def emit_audit(
     coverage_pct: float,
     finding_count: int,
     test_count: Optional[int] = None,
+    executor: str | None = None,
     metrics_root: Path | None = None,
 ) -> None:
     """Append a sdd.audit.result event to audits.jsonl."""
@@ -139,6 +142,7 @@ def emit_audit(
         "coverage_pct": round(coverage_pct, 1),
         "test_count": test_count,
         "finding_count": finding_count,
+        "executor": executor,
     }
     _append_record(_metrics_root(metrics_root), AUDITS_FILE, record)
 

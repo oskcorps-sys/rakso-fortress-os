@@ -18,6 +18,7 @@ app = typer.Typer()
 @app.command()
 def audit(
     role: str = typer.Option(..., "--role", "-r", help="Role performing audit (must be auditor)"),
+    executor: str = typer.Option("any", "--executor", "-e", help="Executor for this audit (e.g. claude, gpt-4, llama, human)"),
     phase: Optional[int] = typer.Option(None, "--phase", "-p", help="Phase to audit (default: current)"),
     auto_approve: bool = typer.Option(False, "--auto-approve", help="Skip manual review"),
     git: bool = typer.Option(
@@ -157,6 +158,7 @@ def audit(
         "phase": audit_phase,
         "timestamp": datetime.now(UTC).isoformat(),
         "auditor": role,
+        "executor": executor,
         "verdict": verdict,
         "steps": steps,
         "findings": findings,
@@ -182,6 +184,7 @@ def audit(
             verdict=verdict,
             coverage_pct=coverage_pct,
             finding_count=len(findings),
+            executor=executor,
         )
     except Exception:
         pass

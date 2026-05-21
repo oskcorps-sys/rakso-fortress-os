@@ -1,8 +1,10 @@
 # SDD+ - Specification-Driven Development Extended
 
-Multi-agent AI orchestration framework with enforced spec-first development, independent audit gates, role-based file enforcement, telemetry, and a web dashboard.
+LLM-agnostic spec-first governance framework for AI-assisted development, with independent audit gates, role-based file enforcement, telemetry, and a web dashboard.
 
 **Core principle**: Specifications are binding. Code follows spec, not vice versa. Audit is independent and impartial.
+
+**LLM-agnostic**: SDD+ doesn't care what AI (or human) executes each role. Use Claude, GPT-4, Gemini, Llama, Ollama, or manual review. Bring your own executor.
 
 ---
 
@@ -23,11 +25,12 @@ sdd init
 # Check current phase and state
 sdd status
 
-# Transition state (as auditor or implementer)
-sdd transition REFINED --role auditor
+# Transition state (as auditor or implementer, with any executor)
+sdd transition REFINED --role auditor --executor claude
+sdd transition IMPLEMENTING --role implementer --executor gpt-4
 
-# Run the 4-step audit loop
-sdd audit --role auditor --auto-approve
+# Run the 4-step audit loop (executor is whoever runs the audit)
+sdd audit --role auditor --executor claude --auto-approve
 
 # Advance to next phase (auditor only, after COMPLETED)
 sdd new-phase --role auditor
@@ -49,7 +52,7 @@ sdd dashboard --port 8888
 
 ## What It Does
 
-SDD+ enforces a dual-agent workflow where **specs come first**:
+SDD+ enforces a spec-first workflow with pluggable executors:
 
 1. **State Machine** - 6-state lifecycle: DRAFT -> REFINED -> LOCKED -> IMPLEMENTING -> AUDITING -> COMPLETED
 2. **Role Enforcement** - `AGENTS.yaml` declares which files each role (implementer/auditor) may touch. A git pre-commit hook enforces it.
@@ -92,9 +95,9 @@ project/
 | `sdd init` | Initialize SDD+ in a directory |
 | `sdd status` | Show current phase and state |
 | `sdd validate` | Validate contract and state artifacts |
-| `sdd transition STATE --role ROLE` | Advance the state machine |
+| `sdd transition STATE --role ROLE [--executor E]` | Advance the state machine |
 | `sdd new-phase --role auditor` | Start next phase after COMPLETED |
-| `sdd audit --role auditor` | Run 4-step audit loop |
+| `sdd audit --role auditor [--executor E]` | Run 4-step audit loop |
 | `sdd install-hooks --role ROLE` | Install git pre-commit hook |
 | `sdd check-patterns --role ROLE` | Dry-run file enforcement check |
 | `sdd metrics show` | Display telemetry records |
@@ -139,4 +142,4 @@ MIT - see [LICENSE](LICENSE).
 
 ---
 
-**Built by Oscar Franco (ReguSense) with Claude as dual-role agent (Implementer + Auditor).**
+**Built by Oscar Franco (ReguSense). LLM-agnostic by design.**

@@ -20,7 +20,7 @@ class TestPhase0Bootstrap:
         """Test that sdd package can be imported."""
         try:
             import sdd
-            assert sdd.__version__ == "0.1.0"
+            assert sdd.__version__ == "0.2.0"
         except ImportError as e:
             pytest.fail(f"Failed to import sdd: {e}")
     

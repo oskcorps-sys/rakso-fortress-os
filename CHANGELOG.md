@@ -2,6 +2,23 @@
 
 All notable changes to SDD+ are documented here.
 
+## [0.2.0] - 2026-05-21
+
+LLM-agnostic refactor. SDD+ no longer assumes any specific AI provider.
+
+### Changed
+- **Executor field**: `AGENTS.yaml` roles now accept an optional `executor` field (default: `"any"`)
+- **CLI `--executor` flag**: `sdd transition` and `sdd audit` accept `--executor` to record which LLM/human performed the action
+- **Telemetry**: transition and audit events now include `executor` field
+- **Schema**: `AgentRoleSchema` includes optional `executor` (default `"any"`)
+- **Documentation**: README, description, and metadata rewritten to be fully LLM-agnostic
+- **Version**: bumped to 0.2.0
+
+### Removed
+- All references to specific AI providers in documentation and metadata
+
+---
+
 ## [0.1.0] - 2026-05-21
 
 First public release. Seven phases of spec-driven development, fully audited.

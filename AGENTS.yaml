@@ -2,6 +2,7 @@ version: 1
 roles:
   implementer:
     description: "Writes code, tests, contracts against locked specs"
+    executor: "any"  # e.g. claude, gpt-4, llama, gemini, human, custom
     allowed_transitions:
       - "DRAFT->REFINED"
       - "LOCKED->IMPLEMENTING"
@@ -20,6 +21,7 @@ roles:
 
   auditor:
     description: "Reviews, gates transitions, writes specs and audits"
+    executor: "any"  # e.g. claude, gpt-4, llama, gemini, human, custom
     allowed_transitions:
       - "DRAFT->REFINED"
       - "REFINED->LOCKED"
