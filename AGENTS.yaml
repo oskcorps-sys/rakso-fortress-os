@@ -11,8 +11,8 @@ roles:
       - "tests/**/*"
       - "sdd/artifacts/CONTRACT*.yaml"
     forbidden_file_patterns:
-      - "sdd/artifacts/SPEC*.yaml"
-      - "sdd/artifacts/AUDIT*.yaml"
+      - "sdd/artifacts/*SPEC*.yaml"
+      - "sdd/artifacts/*AUDIT*.yaml"
       - "AGENTS.yaml"
     constraints:
       - "Cannot modify SPEC or AUDIT artifacts"

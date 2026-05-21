@@ -1,9 +1,11 @@
 """CLI command: sdd new-phase"""
 
+import os
 import yaml
 import typer
 from datetime import datetime, UTC
 from pathlib import Path
+from typing import Optional
 
 from sdd.state_machine.machine import StateMachine
 
@@ -13,6 +15,11 @@ app = typer.Typer()
 @app.command("new-phase")
 def new_phase(
     role: str = typer.Option(..., "--role", "-r", help="Role performing transition (must be auditor)"),
+    git: bool = typer.Option(
+        False,
+        "--git",
+        help="After advancing the phase create a feature/phase-N git branch.",
+    ),
 ):
     """Advance to the next phase after current phase is COMPLETED."""
     if role != "auditor":
@@ -59,7 +66,6 @@ def new_phase(
         tmp = f"{contract_path}.tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             yaml.dump(contract_template, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
-        import os
         os.replace(tmp, contract_path)
 
     # Create handoff log
@@ -83,3 +89,16 @@ def new_phase(
     )
     typer.echo(f"  Contract template: {contract_path}")
     typer.echo(f"  Handoff log: {handoff_path}")
+
+    if git:
+        from sdd.git_integration import create_branch, is_git_repo
+        repo_root = Path.cwd()
+        if not is_git_repo(repo_root):
+            typer.echo("WARN: --git specified but not in a git repository; skipping branch creation.")
+        else:
+            branch_name = f"feature/phase-{next_phase}"
+            git_result = create_branch(branch_name, repo_root)
+            if git_result["success"]:
+                typer.echo(f"  git branch: {branch_name} (created)")
+            else:
+                typer.echo(f"  WARN: git branch creation failed: {git_result['message']}")
