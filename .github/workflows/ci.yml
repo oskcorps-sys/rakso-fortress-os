@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev]" build
       - name: Run tests
         run: pytest tests/ -v --cov=sdd --cov-report=term-missing --cov-fail-under=85
       - name: Build wheel

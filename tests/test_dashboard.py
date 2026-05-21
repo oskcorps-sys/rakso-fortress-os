@@ -4,6 +4,7 @@ Uses httpx.AsyncClient against the FastAPI test client -- no real server needed.
 """
 
 import json
+import re
 from datetime import datetime, UTC
 from pathlib import Path
 
@@ -17,6 +18,13 @@ from sdd.telemetry import emit_audit, emit_transition
 from sdd.web.app import create_app
 
 runner = CliRunner()
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI escape sequences from text."""
+    return _ANSI_RE.sub("", text)
 
 
 # ---------------------------------------------------------------------------
@@ -202,7 +210,7 @@ class TestDashboardCLI:
     def test_help_shows_port_option(self):
         result = runner.invoke(cli_app, ["dashboard", "--help"])
         assert result.exit_code == 0
-        assert "--port" in result.output
+        assert "--port" in _strip_ansi(result.output)
 
 
 # ---------------------------------------------------------------------------
@@ -269,4 +277,4 @@ async def test_metrics_page_empty(tmp_path):
 def test_dashboard_cli_starts():
     result = runner.invoke(cli_app, ["dashboard", "--help"])
     assert result.exit_code == 0
-    assert "--port" in result.output
+    assert "--port" in _strip_ansi(result.output)
