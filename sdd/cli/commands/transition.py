@@ -20,6 +20,19 @@ def transition(
         typer.echo(f"OK: Transition successful: {result['from_state']} -> {result['to_state']}")
         typer.echo(f"  Timestamp: {result['timestamp']}")
 
+        # Emit telemetry (fail-open -- never raises)
+        try:
+            from sdd.telemetry import emit_transition
+            current_phase = machine.get_state().get("current_phase", 0)
+            emit_transition(
+                phase=current_phase,
+                role=role,
+                from_state=result["from_state"],
+                to_state=result["to_state"],
+            )
+        except Exception:
+            pass
+
     except TransitionError as e:
         typer.echo(f"FAIL: Transition denied: {e}", err=True)
         raise typer.Exit(1)

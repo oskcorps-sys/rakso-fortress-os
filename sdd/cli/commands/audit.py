@@ -174,6 +174,18 @@ def audit(
         yaml.dump(audit_data, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
     os.replace(tmp_file, audit_file)
 
+    # Emit telemetry (fail-open -- never raises)
+    try:
+        from sdd.telemetry import emit_audit
+        emit_audit(
+            phase=audit_phase,
+            verdict=verdict,
+            coverage_pct=coverage_pct,
+            finding_count=len(findings),
+        )
+    except Exception:
+        pass
+
     # Output
     if verdict == "APPROVED":
         typer.echo(f"APPROVED Phase {audit_phase} - {coverage_pct:.1f}% coverage, all tests pass")

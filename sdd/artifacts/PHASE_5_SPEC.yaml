@@ -1,0 +1,171 @@
+phase: 5
+created_at: "2026-05-21T01:00:00Z"
+author: "Claude (Auditor)"
+title: "Phase 5 — Telemetry & Metrics"
+
+sprint_mapping: |
+  Phase 5 = Roadmap Sprint 2 — Telemetry & Metrics
+  Emit structured events on phase transitions and audit results.
+  Local JSONL store only; external backends deferred.
+
+description: |
+  Phase 4 locked the harness. Phase 5 makes it legible.
+
+  SDD+ lifecycle events (phase transitions, audit verdicts) are emitted
+  as append-only JSONL records into a local .sdd-metrics/ directory.
+  The operator can query them with `sdd metrics show`.
+
+  Design goals:
+  1. Fail-open — if .sdd-metrics/ is not writable, telemetry silently
+     drops and the lifecycle command succeeds anyway.
+  2. No new top-level dependencies — stdlib json, pathlib, datetime.
+  3. Additive — existing transition and audit behaviour is unchanged
+     when no metrics directory exists.
+
+user_story: |
+  As Oscar (operator/architect), I need to see what SDD+ has been doing:
+  - Every `sdd transition` should append one line to transitions.jsonl
+  - Every `sdd audit` should append one line to audits.jsonl
+  - `sdd metrics show` lets me filter by phase or date
+  - If the metrics directory is read-only or missing, nothing breaks
+
+success_criteria:
+  - "sdd/telemetry.py provides emit_transition() and emit_audit() functions"
+  - "Running sdd transition writes one JSONL line to .sdd-metrics/transitions.jsonl"
+  - "Running sdd audit writes one JSONL line to .sdd-metrics/audits.jsonl"
+  - "`sdd metrics show` prints structured output; --phase N and --since DATE filter"
+  - "Telemetry is fail-open: unwritable .sdd-metrics/ => silent no-op, exit 0"
+  - "No new top-level dependencies (stdlib only)"
+  - ">=85% coverage on every new module; all 190 existing tests still pass"
+
+scope:
+  included:
+    - "sdd/telemetry.py — MetricsStore: emit_transition, emit_audit, query helpers"
+    - "sdd/cli/commands/metrics.py — `sdd metrics show` command"
+    - "tests/test_telemetry.py — telemetry unit tests"
+    - "tests/test_metrics_cli.py — metrics CLI tests"
+
+  modified:
+    - "sdd/cli/commands/transition.py — call emit_transition after successful transition"
+    - "sdd/cli/commands/audit.py — call emit_audit after writing AUDIT.yaml"
+    - "sdd/cli/main.py — register metrics command"
+
+  deferred_to_later_phases:
+    - "External telemetry backends (StatsD, Datadog, Prometheus) — Phase 5 is local JSONL only"
+    - "Web dashboard (Phase 6)"
+    - "PyPI packaging (Phase 7)"
+
+telemetry_spec:
+  store_layout: |
+    .sdd-metrics/
+      transitions.jsonl   # one JSON object per line
+      audits.jsonl         # one JSON object per line
+    Directory created lazily on first emit. Never fails the caller.
+
+  transition_event: |
+    {
+      "event":       "sdd.phase.transition",
+      "timestamp":   "<ISO-8601>",
+      "phase":       <int>,
+      "role":        "<str>",
+      "from_state":  "<str>",
+      "to_state":    "<str>"
+    }
+
+  audit_event: |
+    {
+      "event":          "sdd.audit.result",
+      "timestamp":      "<ISO-8601>",
+      "phase":          <int>,
+      "verdict":        "APPROVED" | "REJECTED",
+      "coverage_pct":   <float>,
+      "test_count":     <int | null>,
+      "finding_count":  <int>
+    }
+
+  query_spec: |
+    MetricsStore.query_transitions(phase=None, since=None) -> list[dict]
+    MetricsStore.query_audits(phase=None, since=None) -> list[dict]
+    Both accept optional int phase and optional datetime since.
+    `sdd metrics show` prints a human-readable table for both stores.
+
+constraints:
+  - "No new top-level dependencies — stdlib json + pathlib + datetime only"
+  - "Fail-open: any I/O error in telemetry is silently suppressed"
+  - "Telemetry is additive — zero behaviour change when .sdd-metrics absent"
+  - "Coverage >=85% on every new module"
+  - "All 190 existing tests must continue passing"
+  - "CLI output ASCII-only — Windows console safe"
+
+acceptance_tests:
+  - name: "test_emit_transition_writes_jsonl"
+    given: "A writable tmp directory as metrics root"
+    when: "emit_transition(phase=4, role='auditor', from_state='IMPLEMENTING', to_state='AUDITING')"
+    then: "transitions.jsonl exists with one valid JSON line containing all fields"
+
+  - name: "test_emit_audit_writes_jsonl"
+    given: "A writable tmp directory as metrics root"
+    when: "emit_audit(phase=4, verdict='APPROVED', coverage_pct=92.1, finding_count=0)"
+    then: "audits.jsonl exists with one valid JSON line containing all fields"
+
+  - name: "test_emit_is_append_only"
+    given: "transitions.jsonl with one existing line"
+    when: "emit_transition called a second time"
+    then: "File has two lines, original line intact"
+
+  - name: "test_emit_fail_open_on_unwritable_dir"
+    given: "Metrics root set to a non-existent read-only path"
+    when: "emit_transition called"
+    then: "No exception raised, returns gracefully"
+
+  - name: "test_query_transitions_no_filter"
+    given: "transitions.jsonl with 3 entries across phases 3, 4, 4"
+    when: "query_transitions()"
+    then: "Returns all 3 records"
+
+  - name: "test_query_transitions_phase_filter"
+    given: "transitions.jsonl with entries for phases 3 and 4"
+    when: "query_transitions(phase=4)"
+    then: "Returns only phase-4 entries"
+
+  - name: "test_query_transitions_since_filter"
+    given: "transitions.jsonl with entries at T-2h and T-30m"
+    when: "query_transitions(since=T-1h)"
+    then: "Returns only the recent entry"
+
+  - name: "test_metrics_show_cli"
+    given: "transitions.jsonl and audits.jsonl with one entry each"
+    when: "sdd metrics show"
+    then: "Exit 0, prints both transition and audit records"
+
+  - name: "test_metrics_show_phase_filter"
+    given: "transitions.jsonl with entries for phases 3 and 4"
+    when: "sdd metrics show --phase 4"
+    then: "Exit 0, prints only phase-4 records"
+
+  - name: "test_transition_command_emits_event"
+    given: "A valid state file, metrics root set"
+    when: "sdd transition AUDITING --role implementer"
+    then: "transitions.jsonl gains one entry with correct phase and states"
+
+  - name: "test_audit_command_emits_event"
+    given: "A valid state file, mocked pytest, metrics root set"
+    when: "sdd audit --role auditor --auto-approve"
+    then: "audits.jsonl gains one entry with verdict and coverage"
+
+  - name: "test_coverage_threshold"
+    kind: "criterion"
+    given: "All Phase 5 code"
+    when: "pytest --cov on new modules"
+    then: "Coverage >=85% on each new module"
+
+git_workflow:
+  branch: "feature/phase-5"
+  commit_sequence:
+    - "PHASE 5: Spec + Contract"
+    - "PHASE 5: Telemetry module + metrics CLI"
+    - "PHASE 5: Wire transition + audit commands"
+    - "PHASE 5: Tests + coverage >=85%"
+  pr_target: "master"
+
+status: READY_FOR_CONTRACT
