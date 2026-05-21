@@ -10,6 +10,7 @@ from sdd.cli.commands.new_phase import new_phase
 from sdd.cli.commands.projects import app as projects_app
 from sdd.cli.commands.install_hooks import install_hooks
 from sdd.cli.commands.check_patterns import check_patterns
+from sdd.cli.commands.metrics import app as metrics_app
 
 app = typer.Typer()
 
@@ -23,6 +24,7 @@ app.command("new-phase")(new_phase)
 app.add_typer(projects_app, name="projects")
 app.command("install-hooks")(install_hooks)
 app.command("check-patterns")(check_patterns)
+app.add_typer(metrics_app, name="metrics")
 
 
 if __name__ == "__main__":
