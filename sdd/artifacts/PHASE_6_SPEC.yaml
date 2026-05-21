@@ -1,0 +1,151 @@
+phase: 6
+created_at: "2026-05-21T01:10:00Z"
+author: "Claude (Auditor)"
+title: "Phase 6 — Web Dashboard"
+
+sprint_mapping: |
+  Phase 6 = Roadmap Sprint 3 — Web Dashboard (Visibility)
+  Single read-only pane of glass for workspace state.
+
+description: |
+  Phase 5 made lifecycle events legible via CLI (`sdd metrics show`).
+  Phase 6 makes them *visible* through a browser: `sdd dashboard`.
+
+  Framework decision: FastAPI + Jinja2 + HTMX.
+  - Server-rendered HTML — no JS build step, no SPA complexity
+  - HTMX for dynamic partials (polling refresh, filter changes)
+  - FastAPI for async HTTP with minimal code
+  - No database, no auth — reads directly from workspace config,
+    .sdd-metrics/ JSONL, and sdd/artifacts/
+
+  Pages:
+    /               — workspace overview (all projects, current phase/state)
+    /project/{name} — project detail (phase timeline, audit history)
+    /metrics        — metrics charts (transitions per phase, audit verdicts)
+
+user_story: |
+  As Oscar (operator/architect), I want to open a browser and see:
+  - Which projects exist, what phase each is in, what state
+  - History of phase transitions and audit verdicts for a project
+  - Coverage trends and finding counts over time
+  Without logging in, without a database, without deploying anything.
+
+success_criteria:
+  - "`sdd dashboard` starts a local HTTP server on a configurable port"
+  - "GET / returns an HTML page listing workspace projects with phase/state"
+  - "GET /project/{name} returns phase timeline and audit history"
+  - "GET /metrics returns telemetry data in a readable format"
+  - "GET /api/health returns JSON 200 (health check endpoint)"
+  - "No database, no auth — purely reads local files"
+  - "New dependencies: fastapi, uvicorn, jinja2, httpx (test only)"
+  - ">=85% coverage on every new module; all 225 existing tests still pass"
+
+scope:
+  included:
+    - "sdd/web/__init__.py — package init"
+    - "sdd/web/app.py — FastAPI application factory"
+    - "sdd/web/routes.py — route handlers"
+    - "sdd/web/templates/ — Jinja2 HTML templates (base, index, project, metrics)"
+    - "sdd/cli/commands/dashboard.py — `sdd dashboard` CLI command"
+    - "tests/test_dashboard.py — httpx.AsyncClient tests"
+
+  modified:
+    - "sdd/cli/main.py — register dashboard command"
+    - "pyproject.toml — add fastapi, uvicorn, jinja2 dependencies; httpx in test extras"
+
+  deferred_to_later_phases:
+    - "PyPI packaging (Phase 7)"
+    - "Real-time WebSocket updates"
+    - "Authentication / multi-user"
+    - "Write actions from the dashboard (Phase 6 is read-only)"
+
+dashboard_spec:
+  framework: "FastAPI + Jinja2 + HTMX (decision: HTMX over React for lower complexity)"
+  server: "uvicorn, launched by `sdd dashboard --port PORT`"
+  data_sources: |
+    - sdd.workspace.yaml (or sdd/workspace.yaml) — project list
+    - sdd/artifacts/STATE_SNAPSHOT.yaml — current phase/state per project
+    - sdd/artifacts/PHASE_N_AUDIT.yaml — audit results per phase
+    - .sdd-metrics/transitions.jsonl — transition events
+    - .sdd-metrics/audits.jsonl — audit events
+  pages:
+    - path: "/"
+      description: "Workspace overview — lists all projects with phase, state, last updated"
+    - path: "/project/{name}"
+      description: "Project detail — phase timeline, completed phases, audit history"
+    - path: "/metrics"
+      description: "Metrics view — transitions and audits from JSONL, filterable by phase"
+    - path: "/api/health"
+      description: "JSON health check: {status: ok, phase: N, state: S}"
+
+constraints:
+  - "Read-only: no write actions from the dashboard"
+  - "No database, no auth"
+  - "New dependencies allowed: fastapi, uvicorn[standard], jinja2, httpx (test)"
+  - "Coverage >=85% on every new module"
+  - "All 225 existing tests must continue passing"
+  - "CLI output ASCII-only — Windows console safe"
+  - "Templates use plain HTML + HTMX attributes, no JS build step"
+
+acceptance_tests:
+  - name: "test_health_endpoint"
+    given: "Dashboard app running"
+    when: "GET /api/health"
+    then: "200 OK with JSON {status: ok}"
+
+  - name: "test_index_page_lists_projects"
+    given: "Workspace with at least one project configured"
+    when: "GET /"
+    then: "200 OK, HTML contains project name and phase info"
+
+  - name: "test_index_page_empty_workspace"
+    given: "No workspace file"
+    when: "GET /"
+    then: "200 OK, HTML shows 'no projects' message"
+
+  - name: "test_project_detail_page"
+    given: "A project with STATE_SNAPSHOT.yaml"
+    when: "GET /project/{name}"
+    then: "200 OK, HTML contains phase, state, completed phases"
+
+  - name: "test_project_detail_with_audits"
+    given: "A project with PHASE_N_AUDIT.yaml files"
+    when: "GET /project/{name}"
+    then: "200 OK, HTML contains audit verdict and coverage"
+
+  - name: "test_project_not_found"
+    given: "A project name not in the workspace"
+    when: "GET /project/nonexistent"
+    then: "404 response"
+
+  - name: "test_metrics_page"
+    given: "Transitions and audits JSONL with records"
+    when: "GET /metrics"
+    then: "200 OK, HTML contains transition and audit data"
+
+  - name: "test_metrics_page_empty"
+    given: "No .sdd-metrics directory"
+    when: "GET /metrics"
+    then: "200 OK, HTML shows 'no metrics' message"
+
+  - name: "test_dashboard_cli_starts"
+    given: "The sdd CLI"
+    when: "sdd dashboard --help"
+    then: "Help text displayed with --port option"
+
+  - name: "test_coverage_threshold"
+    kind: "criterion"
+    given: "All Phase 6 code"
+    when: "pytest --cov on new modules"
+    then: "Coverage >=85% on each new module"
+
+git_workflow:
+  branch: "feature/phase-6"
+  commit_sequence:
+    - "PHASE 6: Spec + Contract"
+    - "PHASE 6: Dashboard app + templates + routes"
+    - "PHASE 6: CLI command + pyproject.toml deps"
+    - "PHASE 6: Tests + coverage >=85%"
+  pr_target: "master"
+
+status: READY_FOR_CONTRACT
