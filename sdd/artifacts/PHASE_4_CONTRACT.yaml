@@ -1,0 +1,180 @@
+phase: 4
+contract_id: contract-phase-4-v1
+created_at: "2026-05-20T00:30:00Z"
+status: DRAFT
+
+specification:
+  title: "Phase 4 — Harness Closure (File-Pattern Enforcement + Git Integration)"
+  description: |
+    Make AGENTS.yaml's authority matrix enforced, not merely declared. A git
+    pre-commit hook rejects staged files that violate the active role's
+    forbidden patterns. SDD lifecycle commands gain opt-in git automation.
+    Maps to Sprint 1 of PHASE_4_ROADMAP.md.
+
+  success_criteria:
+    - "File paths match AGENTS.yaml glob patterns (** and * supported) via stdlib"
+    - "Pre-commit hook rejects staged files matching the active role's forbidden_file_patterns"
+    - "`sdd install-hooks --role R` installs the hook, records the role, never clobbers an existing hook"
+    - "`sdd check-patterns` reports violations for a role + fileset and is what the hook calls"
+    - "No role declared => enforcement is a silent no-op (advisory), exit 0"
+    - "`sdd new-phase --git` creates feature/phase-N; `sdd audit --git` commits the AUDIT artifact"
+    - "Backwards compatible — absent AGENTS.yaml or absent role => no enforcement, no error"
+    - "≥85% coverage on every new module; all 118 existing tests still pass"
+
+inputs:
+  agents_yaml:
+    type: "file (YAML)"
+    required: false
+    description: "Authority matrix — supplies forbidden_file_patterns per role"
+    constraints: "Absent => enforcement disabled (no-op), no error"
+
+  active_role:
+    type: "env var SDD_ROLE or .sdd-role file at repo root"
+    required: false
+    description: "Role the pre-commit hook enforces against"
+    constraints: "Absent => enforcement is a no-op"
+
+  staged_files:
+    type: "git index (git diff --cached --name-only)"
+    required: false
+    description: "Files the pre-commit hook checks"
+
+outputs:
+  precommit_hook:
+    type: "file (.git/hooks/pre-commit)"
+    description: "Shell hook carrying the SDD marker; runs check-patterns --staged"
+
+  sdd_role_file:
+    type: "file (.sdd-role)"
+    description: "Records the role chosen at install-hooks time"
+
+  hook_backup:
+    type: "file (.git/hooks/pre-commit.pre-sdd)"
+    description: "Backup of a pre-existing non-SDD pre-commit hook, when one was present"
+
+constraints:
+  - "No new top-level dependencies — stdlib pathlib + subprocess only"
+  - "Backwards compatible: absent AGENTS.yaml or absent role => no-op, no error"
+  - "install-hooks must never destroy a pre-existing pre-commit hook (back it up first)"
+  - "Hook installation and --git flags are opt-in; default behaviour is unchanged"
+  - "Enforcement is denylist-only (forbidden_file_patterns); strict allowlist deferred"
+  - "Coverage ≥85% on every new module"
+  - "All 118 existing tests must continue passing"
+  - "CLI output ASCII-only — Windows console safe"
+
+assumptions:
+  - "Phase 3 is stable (118/118 tests, AGENTS.yaml present and valid)"
+  - "Runtime is Python 3.13+ (pathlib.PurePath.full_match) — confirmed 3.14.5"
+  - "git is available on PATH in the test and runtime environment"
+  - "Git for Windows runs /bin/sh hooks (sh.exe) — hook uses a POSIX shebang"
+
+acceptance_tests:
+  - name: "test_pattern_matches_glob"
+    given: "Glob patterns src/**/*, sdd/artifacts/SPEC*.yaml, AGENTS.yaml"
+    when: "match_pattern is called with matching and non-matching paths"
+    then: "True for matches including nested **, False otherwise"
+
+  - name: "test_implementer_cannot_stage_spec"
+    given: "AGENTS.yaml loaded, role=implementer"
+    when: "check_files(['sdd/artifacts/PHASE_4_SPEC.yaml'])"
+    then: "One violation — SPEC is in implementer forbidden patterns"
+
+  - name: "test_auditor_cannot_stage_src"
+    given: "AGENTS.yaml loaded, role=auditor"
+    when: "check_files(['src/foo.py'])"
+    then: "One violation — src/** is in auditor forbidden patterns"
+
+  - name: "test_neutral_file_allowed"
+    given: "AGENTS.yaml loaded, either role"
+    when: "check_files(['README.md', 'pyproject.toml'])"
+    then: "No violations — neutral files match no forbidden pattern"
+
+  - name: "test_no_role_is_noop"
+    given: "No SDD_ROLE env var and no .sdd-role file"
+    when: "check_files runs"
+    then: "No violations, advisory no-op"
+
+  - name: "test_install_hooks_writes_precommit"
+    given: "A git repo with no pre-commit hook"
+    when: "sdd install-hooks --role implementer"
+    then: ".git/hooks/pre-commit exists with the SDD marker, .sdd-role written"
+
+  - name: "test_install_hooks_preserves_existing"
+    given: "A git repo with an existing non-SDD pre-commit hook"
+    when: "sdd install-hooks --role implementer"
+    then: "Original hook backed up to pre-commit.pre-sdd with content intact"
+
+  - name: "test_check_patterns_cli_clean"
+    given: "role=implementer, fileset = tests/test_x.py"
+    when: "sdd check-patterns --role implementer --files tests/test_x.py"
+    then: "Exit 0, no violations"
+
+  - name: "test_check_patterns_cli_violation"
+    given: "role=implementer, fileset = sdd/artifacts/PHASE_4_SPEC.yaml"
+    when: "sdd check-patterns --role implementer --files <that>"
+    then: "Exit 1, names the offending file and rule"
+
+  - name: "test_git_is_repo_detection"
+    given: "A directory that is / is not a git repo"
+    when: "is_git_repo(path)"
+    then: "True for a repo, False otherwise"
+
+  - name: "test_git_current_branch"
+    given: "A git repo on a known branch"
+    when: "get_current_branch(path)"
+    then: "Returns the branch name"
+
+  - name: "test_git_tree_clean_detection"
+    given: "A git repo with and without uncommitted changes"
+    when: "is_tree_clean(path)"
+    then: "True when clean, False when dirty"
+
+  - name: "test_new_phase_git_flag_creates_branch"
+    given: "current_state=COMPLETED in a git repo"
+    when: "sdd new-phase --role auditor --git"
+    then: "Branch feature/phase-N created, phase advanced"
+
+  - name: "test_audit_git_flag_commits"
+    given: "An APPROVED audit run in a git repo"
+    when: "sdd audit --role auditor --git"
+    then: "PHASE_N_AUDIT.yaml committed with a conventional message"
+
+  - name: "test_coverage_threshold"
+    kind: "criterion"
+    given: "All Phase 4 code"
+    when: "pytest --cov on new modules"
+    then: "Coverage ≥85% on each new module"
+
+files_to_create:
+  - "sdd/enforcement.py"
+  - "sdd/git_integration.py"
+  - "sdd/cli/commands/install_hooks.py"
+  - "sdd/cli/commands/check_patterns.py"
+  - "tests/test_enforcement.py"
+  - "tests/test_git_integration.py"
+  - "tests/test_hooks_cli.py"
+
+files_to_modify:
+  - "sdd/cli/main.py — register install-hooks and check-patterns"
+  - "sdd/cli/commands/new_phase.py — add opt-in --git flag"
+  - "sdd/cli/commands/audit.py — add opt-in --git flag"
+
+git_workflow:
+  branch: "feature/phase-4"
+  commits:
+    - "PHASE 4: Spec + Contract"
+    - "PHASE 4: File-pattern enforcement module"
+    - "PHASE 4: install-hooks + check-patterns commands"
+    - "PHASE 4: Git integration module + --git flags"
+    - "PHASE 4: Tests + coverage ≥85%"
+  pr_target: "master"
+
+defer_to_next_phase:
+  - "Telemetry & metrics emission (Phase 5)"
+  - "Web dashboard (Phase 6)"
+  - "PyPI packaging (Phase 7)"
+  - "Advanced conflict resolution (post-Phase-4)"
+  - "Strict allowlist enforcement (Phase 4 ships denylist only)"
+
+scope_is_locked: false
+commitment_level: HIGH
