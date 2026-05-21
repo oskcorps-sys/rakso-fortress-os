@@ -1,0 +1,87 @@
+phase: 7
+contract_id: contract-phase-7-v1
+created_at: "2026-05-21T01:20:00Z"
+status: COMMITTED
+
+specification:
+  title: "Phase 7 — PyPI Packaging"
+  description: |
+    Package SDD+ for distribution via pip install sdd-plus.
+    Complete pyproject.toml metadata, README, LICENSE, CHANGELOG.
+    Build verification. Actual PyPI publish is a manual Oscar step.
+
+  success_criteria:
+    - "pyproject.toml complete (classifiers, keywords, URLs)"
+    - "python -m build produces sdist + wheel"
+    - "pip install works in fresh venv"
+    - "sdd --help works after install"
+    - "All 244 existing tests pass"
+    - "README.md has install section"
+
+constraints:
+  - "No import path changes — flat layout preserved"
+  - "All 244 tests must pass"
+  - "Package builds cleanly"
+
+acceptance_tests:
+  - name: "test_pyproject_has_metadata"
+    given: "pyproject.toml"
+    when: "Parsed"
+    then: "Has name, version, description, classifiers, keywords, urls"
+
+  - name: "test_package_builds"
+    given: "Project directory"
+    when: "python -m build"
+    then: "dist/ contains sdist and wheel"
+
+  - name: "test_wheel_installs"
+    given: "Built wheel"
+    when: "pip install in fresh venv"
+    then: "sdd --help works"
+
+  - name: "test_readme_has_install_section"
+    given: "README.md"
+    when: "Read file"
+    then: "Contains pip install instructions"
+
+  - name: "test_license_exists"
+    given: "Project root"
+    when: "Check for LICENSE"
+    then: "MIT license file present"
+
+  - name: "test_changelog_exists"
+    given: "Project root"
+    when: "Check for CHANGELOG.md"
+    then: "Contains v0.1.0 entry"
+
+  - name: "test_all_existing_tests_pass"
+    kind: "criterion"
+    given: "All code"
+    when: "pytest"
+    then: "244+ tests pass"
+
+  - name: "test_coverage_threshold"
+    kind: "criterion"
+    given: "All code"
+    when: "pytest --cov"
+    then: ">=85%"
+
+files_to_create:
+  - "LICENSE"
+  - "CHANGELOG.md"
+  - "tests/test_packaging.py"
+
+files_to_modify:
+  - "pyproject.toml — complete metadata"
+  - "README.md — install section"
+
+git_workflow:
+  branch: "feature/phase-7"
+  commits:
+    - "PHASE 7: Spec + Contract"
+    - "PHASE 7: PyPI metadata + README + LICENSE + CHANGELOG"
+    - "PHASE 7: Build verification + tests"
+  pr_target: "master"
+
+scope_is_locked: true
+commitment_level: HIGH
