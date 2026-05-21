@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}SDD+ - {{ project.name }}{% endblock %}
+{% block content %}
+<h1>{{ project.name }}</h1>
+
+<div class="card">
+  <h2>Current State</h2>
+  <p>
+    <span class="badge badge-phase">Phase {{ state.current_phase | default(0) }}</span>
+    <span class="badge badge-state">{{ state.current_state | default("UNKNOWN") }}</span>
+  </p>
+  <p>Completed phases: {{ state.completed_phases | default([]) | join(", ") or "none" }}</p>
+  {% if state.last_updated %}
+  <p>Last updated: {{ state.last_updated[:19] }}</p>
+  {% endif %}
+</div>
+
+{% if audits %}
+<div class="card">
+  <h2>Audit History</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Phase</th>
+        <th>Verdict</th>
+        <th>Coverage</th>
+        <th>Findings</th>
+        <th>Timestamp</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for a in audits %}
+      <tr>
+        <td>{{ a.phase }}</td>
+        <td>
+          <span class="badge {% if a.verdict == 'APPROVED' %}badge-approved{% else %}badge-rejected{% endif %}">
+            {{ a.verdict }}
+          </span>
+        </td>
+        <td>{{ a.coverage_percent | default(0) }}%</td>
+        <td>{{ a.findings | default([]) | length }}</td>
+        <td>{{ a.timestamp[:19] if a.timestamp else "-" }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card">
+  <p class="empty">No audit history yet.</p>
+</div>
+{% endif %}
+{% endblock %}

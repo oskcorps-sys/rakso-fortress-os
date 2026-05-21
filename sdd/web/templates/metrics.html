@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}SDD+ - Metrics{% endblock %}
+{% block content %}
+<h1>Metrics</h1>
+
+{% if transitions %}
+<div class="card">
+  <h2>Transitions ({{ transitions | length }})</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Phase</th>
+        <th>Role</th>
+        <th>From</th>
+        <th>To</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for t in transitions %}
+      <tr>
+        <td>{{ t.timestamp[:19] if t.timestamp else "-" }}</td>
+        <td><span class="badge badge-phase">{{ t.phase }}</span></td>
+        <td>{{ t.role }}</td>
+        <td>{{ t.from_state }}</td>
+        <td>{{ t.to_state }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if audits %}
+<div class="card">
+  <h2>Audits ({{ audits | length }})</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Phase</th>
+        <th>Verdict</th>
+        <th>Coverage</th>
+        <th>Findings</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for a in audits %}
+      <tr>
+        <td>{{ a.timestamp[:19] if a.timestamp else "-" }}</td>
+        <td><span class="badge badge-phase">{{ a.phase }}</span></td>
+        <td>
+          <span class="badge {% if a.verdict == 'APPROVED' %}badge-approved{% else %}badge-rejected{% endif %}">
+            {{ a.verdict }}
+          </span>
+        </td>
+        <td>{{ a.coverage_pct | default(0) }}%</td>
+        <td>{{ a.finding_count | default(0) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if not transitions and not audits %}
+<div class="card">
+  <p class="empty">No metrics data found. Run <code>sdd transition</code> or <code>sdd audit</code> to generate telemetry.</p>
+</div>
+{% endif %}
+{% endblock %}

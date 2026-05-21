@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}SDD+ Dashboard - Projects{% endblock %}
+{% block content %}
+<h1>Workspace Overview</h1>
+{% if projects %}
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Project</th>
+        <th>Phase</th>
+        <th>State</th>
+        <th>Completed</th>
+        <th>Last Updated</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for p in projects %}
+      <tr>
+        <td><a class="project-link" href="/project/{{ p.name }}">{{ p.name }}</a></td>
+        <td><span class="badge badge-phase">Phase {{ p.phase }}</span></td>
+        <td><span class="badge badge-state">{{ p.state }}</span></td>
+        <td>{{ p.completed_phases | join(", ") if p.completed_phases else "-" }}</td>
+        <td>{{ p.last_updated[:19] if p.last_updated else "-" }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card">
+  <p class="empty">No projects configured. Run <code>sdd projects add</code> to register a project.</p>
+</div>
+{% endif %}
+{% endblock %}

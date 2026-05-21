@@ -1,0 +1,33 @@
+audit_id: audit-phase-6-v1
+phase: 6
+timestamp: '2026-05-21T01:07:18.991139+00:00'
+auditor: auditor
+verdict: APPROVED
+steps:
+  pytest:
+    passed: true
+    returncode: 0
+  coverage:
+    percent: 91.6
+    threshold: 85.0
+    passed: true
+  spec_conformance:
+    passed: true
+    missing_files: []
+  contract_conformance:
+    passed: false
+    missing_tests:
+    - test_health_endpoint
+    - test_index_page_lists_projects
+    - test_index_page_empty_workspace
+    - test_project_detail_page
+    - test_project_detail_with_audits
+    - test_project_not_found
+    - test_metrics_page
+    - test_metrics_page_empty
+findings:
+- severity: MEDIUM
+  description: 'Missing acceptance tests: test_health_endpoint, test_index_page_lists_projects,
+    test_index_page_empty_workspace, test_project_detail_page, test_project_detail_with_audits'
+coverage_percent: 91.6
+signed_at: '2026-05-21T01:07:18.991179+00:00'

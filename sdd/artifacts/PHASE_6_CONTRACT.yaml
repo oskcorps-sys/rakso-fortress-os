@@ -1,0 +1,127 @@
+phase: 6
+contract_id: contract-phase-6-v1
+created_at: "2026-05-21T01:10:00Z"
+status: COMMITTED
+
+specification:
+  title: "Phase 6 — Web Dashboard"
+  description: |
+    Read-only web dashboard for SDD+ workspace visibility.
+    FastAPI + Jinja2 + HTMX, no database, no auth.
+
+  success_criteria:
+    - "`sdd dashboard` starts local HTTP server on configurable port"
+    - "GET / lists workspace projects with phase/state"
+    - "GET /project/{name} shows phase timeline and audit history"
+    - "GET /metrics shows transition and audit telemetry"
+    - "GET /api/health returns JSON 200"
+    - "No database, no auth"
+    - ">=85% coverage on new modules; 225 existing tests pass"
+
+inputs:
+  workspace_config:
+    type: "file (sdd.workspace.yaml or sdd/workspace.yaml)"
+    required: false
+    description: "Project list; absent => show 'current directory' as single project"
+
+  state_snapshot:
+    type: "file (sdd/artifacts/STATE_SNAPSHOT.yaml)"
+    required: false
+    description: "Current phase and state"
+
+  audit_artifacts:
+    type: "files (sdd/artifacts/PHASE_N_AUDIT.yaml)"
+    required: false
+    description: "Audit results per phase"
+
+  metrics_store:
+    type: "directory (.sdd-metrics/)"
+    required: false
+    description: "JSONL telemetry data"
+
+constraints:
+  - "Read-only dashboard — no write actions"
+  - "No database, no auth"
+  - "New deps: fastapi, uvicorn[standard], jinja2; httpx for tests"
+  - "Coverage >=85% on every new module"
+  - "All 225 existing tests must continue passing"
+  - "CLI output ASCII-only"
+
+acceptance_tests:
+  - name: "test_health_endpoint"
+    given: "Dashboard app running"
+    when: "GET /api/health"
+    then: "200 OK with JSON {status: ok}"
+
+  - name: "test_index_page_lists_projects"
+    given: "Workspace with at least one project"
+    when: "GET /"
+    then: "200 OK, HTML contains project name"
+
+  - name: "test_index_page_empty_workspace"
+    given: "No workspace file"
+    when: "GET /"
+    then: "200 OK, HTML shows no-projects message"
+
+  - name: "test_project_detail_page"
+    given: "A project with STATE_SNAPSHOT.yaml"
+    when: "GET /project/{name}"
+    then: "200 OK, HTML contains phase and state"
+
+  - name: "test_project_detail_with_audits"
+    given: "A project with PHASE_N_AUDIT.yaml"
+    when: "GET /project/{name}"
+    then: "200 OK, HTML contains audit verdict and coverage"
+
+  - name: "test_project_not_found"
+    given: "Unknown project name"
+    when: "GET /project/nonexistent"
+    then: "404 response"
+
+  - name: "test_metrics_page"
+    given: "JSONL with transition and audit records"
+    when: "GET /metrics"
+    then: "200 OK, HTML contains telemetry data"
+
+  - name: "test_metrics_page_empty"
+    given: "No .sdd-metrics directory"
+    when: "GET /metrics"
+    then: "200 OK, shows no-metrics message"
+
+  - name: "test_dashboard_cli_starts"
+    given: "sdd CLI"
+    when: "sdd dashboard --help"
+    then: "Help text with --port option"
+
+  - name: "test_coverage_threshold"
+    kind: "criterion"
+    given: "All Phase 6 code"
+    when: "pytest --cov on new modules"
+    then: "Coverage >=85% on each new module"
+
+files_to_create:
+  - "sdd/web/__init__.py"
+  - "sdd/web/app.py"
+  - "sdd/web/routes.py"
+  - "sdd/web/templates/base.html"
+  - "sdd/web/templates/index.html"
+  - "sdd/web/templates/project.html"
+  - "sdd/web/templates/metrics.html"
+  - "sdd/cli/commands/dashboard.py"
+  - "tests/test_dashboard.py"
+
+files_to_modify:
+  - "sdd/cli/main.py — register dashboard command"
+  - "pyproject.toml — add fastapi, uvicorn, jinja2, httpx dependencies"
+
+git_workflow:
+  branch: "feature/phase-6"
+  commits:
+    - "PHASE 6: Spec + Contract"
+    - "PHASE 6: Dashboard app + templates + routes"
+    - "PHASE 6: CLI command + pyproject.toml deps"
+    - "PHASE 6: Tests + coverage >=85%"
+  pr_target: "master"
+
+scope_is_locked: true
+commitment_level: HIGH
