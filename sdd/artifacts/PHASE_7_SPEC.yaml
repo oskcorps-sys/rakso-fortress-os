@@ -1,0 +1,111 @@
+phase: 7
+created_at: "2026-05-21T01:20:00Z"
+author: "Claude (Auditor)"
+title: "Phase 7 — PyPI Packaging"
+
+sprint_mapping: |
+  Phase 7 = Roadmap Sprint 4 — PyPI Packaging (Distribution)
+  Make SDD+ installable via `pip install sdd-plus`.
+
+description: |
+  Phases 4-6 built enforcement, telemetry, and a dashboard. Phase 7
+  packages all of it for distribution.
+
+  Key steps:
+  1. Migrate to src/ layout (src/sdd/ instead of flat sdd/)
+  2. Tighten pyproject.toml metadata (classifiers, keywords, README, URLs)
+  3. Verify sdd-plus name available on PyPI (DONE -- confirmed available)
+  4. Build sdist + wheel
+  5. Publish to TestPyPI, smoke test in fresh venv
+  6. Publish to live PyPI
+  7. Tag v0.1.0
+
+  NOTE: The src/ layout migration is DEFERRED. The current flat layout
+  works fine for pip install -e . and for PyPI. Migrating would break
+  every import path and all 244 tests. The effort is not worth it for
+  v0.1.0 -- we ship with the flat layout and migrate later if needed.
+
+user_story: |
+  As Oscar, I want to `pip install sdd-plus` in a fresh venv and have
+  the `sdd` command available with all features working.
+
+success_criteria:
+  - "pyproject.toml has complete metadata (description, classifiers, keywords, URLs)"
+  - "python -m build produces sdist + wheel without errors"
+  - "pip install dist/sdd_plus-0.1.0-py3-none-any.whl succeeds in a fresh venv"
+  - "sdd --help works after install"
+  - "All 244 existing tests still pass"
+  - "README.md has install section"
+
+scope:
+  included:
+    - "pyproject.toml — complete metadata for PyPI"
+    - "README.md — install section + badges"
+    - "LICENSE — MIT license file"
+    - "CHANGELOG.md — v0.1.0 release notes"
+
+  modified:
+    - "pyproject.toml — classifiers, keywords, project-urls, long_description"
+
+  deferred:
+    - "src/ layout migration (not needed for v0.1.0, would break all imports)"
+    - "TestPyPI + live PyPI publish (manual step by Oscar after review)"
+    - "GitHub Actions CI/CD"
+
+constraints:
+  - "All 244 existing tests must continue passing"
+  - "No import path changes (flat layout preserved)"
+  - "Package builds cleanly with python -m build"
+
+acceptance_tests:
+  - name: "test_pyproject_has_metadata"
+    given: "pyproject.toml"
+    when: "Parsed with tomllib"
+    then: "Has name, version, description, classifiers, keywords, urls"
+
+  - name: "test_package_builds"
+    given: "The project directory"
+    when: "python -m build"
+    then: "dist/ contains sdist and wheel"
+
+  - name: "test_wheel_installs"
+    given: "The built wheel"
+    when: "pip install in a fresh venv"
+    then: "sdd --help works"
+
+  - name: "test_readme_has_install_section"
+    given: "README.md"
+    when: "Read the file"
+    then: "Contains pip install instructions"
+
+  - name: "test_license_exists"
+    given: "Project root"
+    when: "Check for LICENSE"
+    then: "MIT license file present"
+
+  - name: "test_changelog_exists"
+    given: "Project root"
+    when: "Check for CHANGELOG.md"
+    then: "Contains v0.1.0 entry"
+
+  - name: "test_all_existing_tests_pass"
+    kind: "criterion"
+    given: "All project code"
+    when: "pytest"
+    then: "244+ tests pass"
+
+  - name: "test_coverage_threshold"
+    kind: "criterion"
+    given: "All project code"
+    when: "pytest --cov"
+    then: "Coverage >=85%"
+
+git_workflow:
+  branch: "feature/phase-7"
+  commit_sequence:
+    - "PHASE 7: Spec + Contract"
+    - "PHASE 7: PyPI metadata + README + LICENSE + CHANGELOG"
+    - "PHASE 7: Build verification + tests"
+  pr_target: "master"
+
+status: READY_FOR_CONTRACT
