@@ -176,3 +176,37 @@ class TestCheckPatternsCLI:
         )
         assert result.exit_code == 1
         assert "src/foo.py" in result.output
+
+
+# ---------------------------------------------------------------------------
+# Named acceptance-test functions (must match PHASE_4_CONTRACT.yaml names)
+# ---------------------------------------------------------------------------
+
+
+def test_check_patterns_cli_clean(tmp_path, monkeypatch):
+    """sdd check-patterns --role implementer --files tests/test_x.py exits 0."""
+    _write_agents(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(
+        app,
+        ["check-patterns", "--role", "implementer", "--files", "tests/test_x.py", "--repo-root", str(tmp_path)],
+    )
+    assert result.exit_code == 0
+    assert "OK" in result.output
+
+
+def test_check_patterns_cli_violation(tmp_path, monkeypatch):
+    """sdd check-patterns --role implementer --files sdd/artifacts/PHASE_4_SPEC.yaml exits 1."""
+    _write_agents(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(
+        app,
+        [
+            "check-patterns",
+            "--role", "implementer",
+            "--files", "sdd/artifacts/PHASE_4_SPEC.yaml",
+            "--repo-root", str(tmp_path),
+        ],
+    )
+    assert result.exit_code == 1
+    assert "sdd/artifacts/PHASE_4_SPEC.yaml" in result.output

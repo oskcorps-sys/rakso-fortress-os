@@ -150,3 +150,31 @@ class TestStageAndCommit:
         _init_repo(tmp_path)
         result = stage_and_commit("msg", ["nonexistent.yaml"], tmp_path)
         assert result["success"] is False
+
+
+# ---------------------------------------------------------------------------
+# Named acceptance-test functions (must match PHASE_4_CONTRACT.yaml names)
+# ---------------------------------------------------------------------------
+
+
+def test_git_is_repo_detection(tmp_path):
+    """is_git_repo returns True for a repo and False for a plain directory."""
+    assert is_git_repo(tmp_path) is False
+    _init_repo(tmp_path)
+    assert is_git_repo(tmp_path) is True
+
+
+def test_git_current_branch(tmp_path):
+    """get_current_branch returns the branch name in a repo, empty string otherwise."""
+    _init_repo(tmp_path)
+    branch = get_current_branch(tmp_path)
+    assert branch != ""
+    assert branch in ("master", "main")
+
+
+def test_git_tree_clean_detection(tmp_path):
+    """is_tree_clean returns True for a clean working tree, False when dirty."""
+    _init_repo(tmp_path)
+    assert is_tree_clean(tmp_path) is True
+    (tmp_path / "dirty.txt").write_text("x", encoding="utf-8")
+    assert is_tree_clean(tmp_path) is False

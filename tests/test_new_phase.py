@@ -1,5 +1,7 @@
 """Tests for sdd new-phase CLI command."""
 
+import subprocess
+
 import pytest
 import yaml
 from pathlib import Path
@@ -96,3 +98,30 @@ class TestNewPhaseCommand:
         )
         result = runner.invoke(app, ["new-phase", "--role", "auditor"])
         assert result.exit_code != 0
+
+
+def _init_git_repo(root: Path) -> None:
+    subprocess.run(["git", "init"], cwd=str(root), capture_output=True, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t.com"], cwd=str(root), capture_output=True, check=True)
+    subprocess.run(["git", "config", "user.name", "T"], cwd=str(root), capture_output=True, check=True)
+    (root / "init.txt").write_text("x", encoding="utf-8")
+    subprocess.run(["git", "add", "init.txt"], cwd=str(root), capture_output=True, check=True)
+    subprocess.run(["git", "commit", "-m", "init"], cwd=str(root), capture_output=True, check=True)
+
+
+def test_new_phase_git_flag_creates_branch(tmp_path, monkeypatch):
+    """sdd new-phase --git creates a feature/phase-N branch after advancing the phase."""
+    _init_git_repo(tmp_path)
+    state_path = str(tmp_path / "sdd" / "artifacts" / "STATE_SNAPSHOT.yaml")
+    _create_state_file(state_path, state="COMPLETED", phase=2, completed=[1])
+    monkeypatch.setattr("sdd.state_machine.machine.StateMachine.STATE_FILE", state_path)
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["new-phase", "--role", "auditor", "--git"])
+    assert result.exit_code == 0, result.output
+    assert "Phase 2 -> Phase 3" in result.output
+    assert "feature/phase-3" in result.output
+
+    # Verify the branch was actually created in the git repo
+    from sdd.git_integration import get_current_branch
+    assert get_current_branch(tmp_path) == "feature/phase-3"

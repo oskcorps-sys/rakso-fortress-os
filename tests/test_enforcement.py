@@ -276,3 +276,53 @@ class TestGetStagedFiles:
 
     def test_not_a_repo_returns_empty(self, tmp_path):
         assert get_staged_files(tmp_path) == []
+
+
+# ---------------------------------------------------------------------------
+# Named acceptance-test functions (must match PHASE_4_CONTRACT.yaml names)
+# ---------------------------------------------------------------------------
+
+
+def test_pattern_matches_glob():
+    """Glob patterns src/**/*, sdd/artifacts/*SPEC*.yaml, AGENTS.yaml work correctly."""
+    assert match_pattern("src/**/*", "src/foo/bar.py") is True
+    assert match_pattern("src/**/*", "src/nested/deep/file.py") is True
+    assert match_pattern("sdd/artifacts/*SPEC*.yaml", "sdd/artifacts/PHASE_4_SPEC.yaml") is True
+    assert match_pattern("AGENTS.yaml", "AGENTS.yaml") is True
+    assert match_pattern("src/**/*", "tests/test_foo.py") is False
+    assert match_pattern("AGENTS.yaml", "README.md") is False
+
+
+def test_neutral_file_allowed(tmp_path):
+    """Neutral files (README.md, pyproject.toml) match no forbidden pattern for either role."""
+    _write_agents(tmp_path)
+    cfg = load_agents_config(tmp_path)
+    impl_forbidden = get_forbidden_patterns("implementer", cfg)
+    aud_forbidden = get_forbidden_patterns("auditor", cfg)
+    assert check_files(["README.md", "pyproject.toml"], "implementer", impl_forbidden) == []
+    assert check_files(["README.md", "pyproject.toml"], "auditor", aud_forbidden) == []
+
+
+def test_install_hooks_writes_precommit(tmp_path):
+    """install_hook writes pre-commit with SDD marker and records .sdd-role."""
+    _make_git_repo(tmp_path)
+    result = install_hook("implementer", tmp_path)
+    assert result["installed"] is True
+    hook = tmp_path / ".git" / "hooks" / "pre-commit"
+    assert hook.exists()
+    assert SDD_HOOK_MARKER in hook.read_text(encoding="utf-8")
+    role_file = tmp_path / ".sdd-role"
+    assert role_file.read_text(encoding="utf-8").strip() == "implementer"
+
+
+def test_install_hooks_preserves_existing(tmp_path):
+    """install_hook backs up a pre-existing non-SDD pre-commit hook."""
+    _make_git_repo(tmp_path)
+    hooks_dir = tmp_path / ".git" / "hooks"
+    (hooks_dir / "pre-commit").write_text("#!/bin/sh\necho original\n", encoding="utf-8")
+    result = install_hook("auditor", tmp_path)
+    assert result["installed"] is True
+    assert result["backed_up"] is True
+    backup = hooks_dir / "pre-commit.pre-sdd"
+    assert backup.exists()
+    assert "original" in backup.read_text(encoding="utf-8")
