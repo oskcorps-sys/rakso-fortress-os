@@ -1,0 +1,79 @@
+name: CI — Tests + Security Audit
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  test:
+    name: Tests + Coverage
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        run: pytest tests/ -v --cov=sdd --cov-report=term-missing --cov-fail-under=85
+      - name: Build wheel
+        run: |
+          pip install build
+          python -m build --wheel --no-isolation
+
+  security:
+    name: Security Scan (bandit + pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install tools
+        run: pip install bandit pip-audit -e .
+      - name: Bandit (security)
+        run: bandit -r sdd/ -f txt -ll
+      - name: pip-audit (CVEs)
+        run: pip-audit --format=columns
+
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: python
+      - uses: github/codeql-action/analyze@v3
+
+  quality:
+    name: Code Quality (radon)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install radon
+        run: pip install radon
+      - name: Cyclomatic complexity (fail on E+)
+        run: |
+          radon cc sdd/ -a -nc
+          radon cc sdd/ -a --total-average | grep -E "^Average" | awk '{print $NF}' | tr -d '()' | while read grade; do
+            case "$grade" in
+              E|F) echo "FAIL: Average complexity is $grade"; exit 1 ;;
+              *) echo "OK: Average complexity is $grade" ;;
+            esac
+          done
+      - name: Maintainability index
+        run: radon mi sdd/ -s
