@@ -1,11 +1,12 @@
 """Tests for sdd audit CLI command."""
 
 import json
+import subprocess
 import pytest
 import yaml
 from pathlib import Path
 from datetime import datetime, UTC
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from typer.testing import CliRunner
 
 from sdd.cli.main import app
@@ -290,7 +291,7 @@ class TestAuditCommand:
         assert audit_data["steps"]["spec_conformance"]["passed"] is True
         assert audit_data["steps"]["spec_conformance"]["missing_files"] == []
 
-    def test_audit_low_coverage_rejected(self, monkeypatch, tmp_path):
+    def test_audit_low_coverage_rejected(self, monkeypatch, tmp_path):  # noqa: D102
         state_path = str(tmp_path / "sdd" / "artifacts" / "STATE_SNAPSHOT.yaml")
         _create_state_file(state_path, state="AUDITING", phase=1)
         monkeypatch.setattr("sdd.state_machine.machine.StateMachine.STATE_FILE", state_path)
@@ -317,3 +318,62 @@ class TestAuditCommand:
             audit_data = yaml.safe_load(f)
         assert audit_data["verdict"] == "REJECTED"
         assert audit_data["coverage_percent"] == 50.0
+
+
+def _init_git_repo(root: Path) -> None:
+    subprocess.run(["git", "init"], cwd=str(root), capture_output=True, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t.com"], cwd=str(root), capture_output=True, check=True)
+    subprocess.run(["git", "config", "user.name", "T"], cwd=str(root), capture_output=True, check=True)
+    (root / "init.txt").write_text("x", encoding="utf-8")
+    subprocess.run(["git", "add", "init.txt"], cwd=str(root), capture_output=True, check=True)
+    subprocess.run(["git", "commit", "-m", "init"], cwd=str(root), capture_output=True, check=True)
+
+
+def test_audit_git_flag_commits(monkeypatch, tmp_path):
+    """sdd audit --git stages and commits AUDIT.yaml when verdict is APPROVED."""
+    _init_git_repo(tmp_path)
+    state_path = str(tmp_path / "sdd" / "artifacts" / "STATE_SNAPSHOT.yaml")
+    _create_state_file(state_path, state="AUDITING", phase=1)
+    monkeypatch.setattr("sdd.state_machine.machine.StateMachine.STATE_FILE", state_path)
+    monkeypatch.chdir(tmp_path)
+
+    cov_data = {"totals": {"percent_covered": 92.0}}
+
+    def mock_run_pytest(cmd, **kwargs):
+        # Only intercept pytest calls; pass git calls through
+        if any("pytest" in str(a) for a in cmd):
+            mock = MagicMock()
+            mock.returncode = 0
+            mock.stdout = "all passed"
+            mock.stderr = ""
+            for arg in cmd:
+                if arg.startswith("--cov-report=json:"):
+                    with open(arg.split(":", 1)[1], "w", encoding="utf-8") as f:
+                        json.dump(cov_data, f)
+            return mock
+        # git commands — run for real
+        return subprocess.run.__wrapped__(cmd, **kwargs) if hasattr(subprocess.run, "__wrapped__") else _real_subprocess_run(cmd, **kwargs)
+
+    _real_subprocess_run = subprocess.run
+    monkeypatch.setattr("subprocess.run", mock_run_pytest)
+
+    committed_calls = []
+
+    def mock_stage_and_commit(message, files, path=None):
+        committed_calls.append({"message": message, "files": files})
+        return {"success": True, "sha": "abc1234", "message": "Committed"}
+
+    monkeypatch.setattr("sdd.git_integration.stage_and_commit", mock_stage_and_commit)
+    monkeypatch.setattr("sdd.git_integration.is_git_repo", lambda *a, **kw: True)
+
+    result = runner.invoke(
+        app,
+        ["audit", "--role", "auditor", "--phase", "1", "--auto-approve", "--git"],
+    )
+    assert result.exit_code == 0, result.output
+    assert "APPROVED" in result.output
+
+    # stage_and_commit should have been called once with the audit file
+    assert len(committed_calls) == 1
+    assert "PHASE_1_AUDIT.yaml" in committed_calls[0]["files"][0]
+    assert "abc1234" in result.output

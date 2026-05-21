@@ -20,6 +20,11 @@ def audit(
     role: str = typer.Option(..., "--role", "-r", help="Role performing audit (must be auditor)"),
     phase: Optional[int] = typer.Option(None, "--phase", "-p", help="Phase to audit (default: current)"),
     auto_approve: bool = typer.Option(False, "--auto-approve", help="Skip manual review"),
+    git: bool = typer.Option(
+        False,
+        "--git",
+        help="After an APPROVED verdict, stage and commit the AUDIT.yaml artifact.",
+    ),
 ):
     """Run the 4-step audit loop and produce AUDIT.yaml."""
     if role != "auditor":
@@ -172,6 +177,20 @@ def audit(
     # Output
     if verdict == "APPROVED":
         typer.echo(f"APPROVED Phase {audit_phase} - {coverage_pct:.1f}% coverage, all tests pass")
+        if git:
+            from sdd.git_integration import is_git_repo, stage_and_commit
+            repo_root = Path.cwd()
+            if not is_git_repo(repo_root):
+                typer.echo("WARN: --git specified but not in a git repository; skipping commit.")
+            else:
+                commit_msg = (
+                    f"audit(phase-{audit_phase}): APPROVED {coverage_pct:.1f}% coverage"
+                )
+                git_result = stage_and_commit(commit_msg, [audit_file], repo_root)
+                if git_result["success"]:
+                    typer.echo(f"  git commit: {git_result['sha']} {commit_msg}")
+                else:
+                    typer.echo(f"  WARN: git commit failed: {git_result['message']}")
     else:
         typer.echo(f"REJECTED Phase {audit_phase}", err=True)
         for finding in findings:
