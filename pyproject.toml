@@ -5,12 +5,24 @@ build-backend = "hatchling.build"
 [project]
 name = "sdd-plus"
 version = "0.1.0"
-description = "Specification-Driven Development Extended - multi-agent AI orchestration framework"
+description = "Specification-Driven Development Extended - multi-agent AI orchestration framework with role enforcement, telemetry, and a web dashboard"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 license = {text = "MIT"}
 authors = [
-    {name = "Oscar", email = "oscar@regusense.com"},
+    {name = "Oscar Franco", email = "oscar@regusense.com"},
+]
+keywords = ["sdd", "spec-driven", "ai-agents", "orchestration", "development-framework"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Typing :: Typed",
 ]
 
 dependencies = [
@@ -37,6 +49,15 @@ dev = [
 
 [project.scripts]
 sdd = "sdd.cli.main:app"
+
+[project.urls]
+Homepage = "https://github.com/oscarfrancodev/sdd-plus"
+Repository = "https://github.com/oscarfrancodev/sdd-plus"
+Issues = "https://github.com/oscarfrancodev/sdd-plus/issues"
+Changelog = "https://github.com/oscarfrancodev/sdd-plus/blob/master/CHANGELOG.md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["sdd"]
 
 [tool.uv]
 python = "3.11"

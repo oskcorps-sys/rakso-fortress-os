@@ -1,275 +1,142 @@
-# SDD+ — Specification-Driven Development Extended
+# SDD+ - Specification-Driven Development Extended
 
-Multi-agent AI orchestration framework with enforced spec-first development, independent audit gates, and production-ready conformance validation.
+Multi-agent AI orchestration framework with enforced spec-first development, independent audit gates, role-based file enforcement, telemetry, and a web dashboard.
 
 **Core principle**: Specifications are binding. Code follows spec, not vice versa. Audit is independent and impartial.
 
 ---
 
+## Install
+
+```bash
+pip install sdd-plus
+```
+
+Requires Python 3.13+.
+
 ## Quick Start
 
-### Prerequisites
-- Python 3.11+
-- `uv` (package manager) — install: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-- Git
-
-### Setup
-
 ```bash
-# Clone or create project
-git init sdd-project
-cd sdd-project
+# Initialize a new SDD+ project
+sdd init
 
-# Copy all files from this scaffold into the directory
+# Check current phase and state
+sdd status
 
-# Install dependencies
-uv sync
+# Transition state (as auditor or implementer)
+sdd transition REFINED --role auditor
 
-# Verify setup
-sdd --help
-pytest tests/ -v --cov
+# Run the 4-step audit loop
+sdd audit --role auditor --auto-approve
+
+# Advance to next phase (auditor only, after COMPLETED)
+sdd new-phase --role auditor
+
+# Install the pre-commit enforcement hook
+sdd install-hooks --role implementer
+
+# Check file patterns against role rules (dry-run)
+sdd check-patterns --role implementer --files src/foo.py
+
+# View telemetry
+sdd metrics show --phase 4
+
+# Launch the web dashboard
+sdd dashboard --port 8888
 ```
 
-### First Phase
+---
 
-```bash
-# Codex reads AGENTS.md to understand implementer role
-# Human reads CLAUDE.md to understand auditor role
-# Human reads BEHAVIOR_NORMS.md for operational rules
+## What It Does
 
-# Start Phase 0
-# Deliverable: repo exists, imports work, CI passes
-```
+SDD+ enforces a dual-agent workflow where **specs come first**:
+
+1. **State Machine** - 6-state lifecycle: DRAFT -> REFINED -> LOCKED -> IMPLEMENTING -> AUDITING -> COMPLETED
+2. **Role Enforcement** - `AGENTS.yaml` declares which files each role (implementer/auditor) may touch. A git pre-commit hook enforces it.
+3. **Audit Loop** - 4-step automated audit: pytest, coverage >= 85%, spec conformance, contract conformance.
+4. **Telemetry** - Every transition and audit is logged to `.sdd-metrics/` as JSONL.
+5. **Dashboard** - `sdd dashboard` serves a read-only web UI showing project state, audit history, and metrics.
 
 ---
 
 ## Architecture
 
 ```
-sdd-project/
-├── AGENTS.md                 # Implementer (Codex) role definition
-├── CLAUDE.md                 # Auditor (Claude Code) role definition
-├── README.md                 # This file
-├── pyproject.toml            # Dependencies + build config
-├── .gitignore
-├── .pre-commit-config.yaml   # (Added in Phase 4)
-├── .github/workflows/        # (Added in Phase 4)
-│
-├── sdd/                      # Main package
-│   ├── __init__.py
-│   ├── tools/
-│   │   ├── __init__.py
-│   │   └── sdd.py            # CLI (typer-based)
-│   │
-│   ├── validators/           # Validation code (Codex writes)
-│   │   ├── __init__.py
-│   │   ├── validate_contract.py
-│   │   ├── validate_state_snapshot.py
-│   │   └── contract_vs_code_check.py
-│   │
-│   ├── schemas/              # YAML schemas (pydantic models exported to JSON)
-│   │   ├── contract.schema.yaml
-│   │   ├── contract_review.schema.yaml
-│   │   ├── state_snapshot.schema.yaml
-│   │   ├── state_machine.schema.yaml
-│   │   └── authority_matrix.schema.yaml
-│   │
-│   ├── artifacts/            # Working artifacts (version controlled)
-│   │   ├── USER_STORY.yaml
-│   │   ├── DECISIONS.yaml
-│   │   ├── CONTRACT.yaml
-│   │   ├── CONTRACT_REVIEW.yaml
-│   │   ├── TEST_REPORT.yaml
-│   │   ├── STATE_SNAPSHOT.yaml
-│   │   └── PHASE_*_AUDIT.yaml (generated)
-│   │
-│   ├── skills/               # Modular skills (Codex writes)
-│   │   ├── __init__.py
-│   │   └── contract_generator/
-│   │       ├── __init__.py
-│   │       ├── SKILL.md
-│   │       ├── skill.py
-│   │       ├── input_schema.yaml
-│   │       ├── output_schema.yaml
-│   │       ├── examples/
-│   │       └── tests/
-│   │
-│   ├── behavior/
-│   │   └── BEHAVIOR_NORMS.md # Operational rules
-│   │
-│   ├── state-machine/
-│   │   └── STATE_MACHINE.yaml # State definitions + transitions
-│   │
-│   └── logs/
-│       └── .gitkeep           # Append-only audit logs (created at runtime)
-│
-├── tests/                    # Root test directory
-│   ├── __init__.py
-│   ├── conftest.py           # Shared fixtures
-│   └── test_setup.py         # Bootstrap test
-│
-└── DECISIONS.md              # Technical decision log
+project/
+  AGENTS.yaml                  # Authority matrix (role -> file patterns)
+  sdd/
+    artifacts/                 # Specs, contracts, audits, state snapshot
+      STATE_SNAPSHOT.yaml
+      PHASE_N_SPEC.yaml
+      PHASE_N_CONTRACT.yaml
+      PHASE_N_AUDIT.yaml
+    handoffs/                  # Phase transition summaries
+    state_machine/             # 6-state machine + transitions
+    schemas/                   # Pydantic v2 models
+    validators/                # Contract + state validators
+    enforcement.py             # File-pattern denylist enforcement
+    git_integration.py         # Git helpers (branch, commit, clean check)
+    telemetry.py               # JSONL event emitter + query
+    web/                       # FastAPI + Jinja2 dashboard
+    cli/                       # Typer CLI commands
+  tests/                       # 244+ tests, >= 85% coverage
+  .sdd-metrics/                # Telemetry JSONL (gitignored)
 ```
-
----
-
-## Phase Roadmap
-
-| Phase | Deliverable | Codex (Builder) | Claude Code (Auditor) | Est. Duration |
-|-------|-------------|-----------------|----------------------|---------------|
-| 0 | Bootstrap | Create repo structure | Verify structure | 2-3h |
-| 1 | Schemas + Validators | Write pydantic models + validators | Verify schema compliance + tests | 1d |
-| 2 | State Machine + CLI | Implement STATE_MACHINE.yaml + sdd CLI | Verify state transitions + logs | 1d |
-| 3 | First Skill | Implement contract_generator skill | Verify conformance ≥95% | 1d |
-| 4 | CI + Conformance | Add pre-commit + GH Actions | Verify all gates work | 0.5d |
-| 5 | Auditor Access | Authority matrix enforcement | Verify permissions enforced | 0.5d |
-| 6 | Pilot Integration | Integrate with real project (NorthStar Hub) | Audit production readiness | 1d |
-
----
-
-## Key Files to Read First
-
-1. **AGENTS.md** — If you're the implementer (Codex)
-2. **CLAUDE.md** — If you're the auditor (Claude Code)
-3. **BEHAVIOR_NORMS.md** — Everyone (operational rules)
-4. **DECISIONS.md** — Track technical choices per phase
-
----
-
-## How It Works
-
-### The Loop
-
-```
-1. Spec exists (USER_STORY.yaml + CONTRACT.yaml)
-   ↓
-2. Codex implements code + tests (feature/phase-N branch)
-   ↓
-3. Codex self-checks: pytest + validators pass locally
-   ↓
-4. Codex opens PR with link to CONTRACT.yaml
-   ↓
-5. Claude Code audits: 4-step loop (tests → schemas → conformance → decision)
-   ↓
-6. Claude Code fills PHASE_N_AUDIT.yaml
-   ↓
-7. If APPROVED: human approves merge → next phase starts
-   If REJECTED: Codex fixes issues, pushes to same branch → back to step 5
-   ↓
-8. Once phase locked (git tag phase-N-locked), cannot regress
-```
-
-### Authority Split
-
-**Codex writes**:
-- `/sdd/validators/*` (validation code)
-- `/sdd/tools/*` (CLI utilities)
-- `/sdd/skills/*` (skill implementations)
-- Feature branches (`feature/phase-N`)
-- Test code
-
-**Claude Code writes**:
-- `/sdd/artifacts/PHASE_N_AUDIT.yaml` (audit report)
-- `/sdd/artifacts/CONTRACT_REVIEW.yaml` (detailed feedback)
-- `/sdd/artifacts/TEST_REPORT.yaml` (test summary)
-- `/sdd/logs/audit.jsonl` (append-only audit log)
-
-**Never**:
-- Codex modifies audit artifacts
-- Claude Code modifies implementation code
-- Either modifies state transitions directly (use CLI)
 
 ---
 
 ## CLI Commands
 
+| Command | Description |
+|---------|-------------|
+| `sdd init` | Initialize SDD+ in a directory |
+| `sdd status` | Show current phase and state |
+| `sdd validate` | Validate contract and state artifacts |
+| `sdd transition STATE --role ROLE` | Advance the state machine |
+| `sdd new-phase --role auditor` | Start next phase after COMPLETED |
+| `sdd audit --role auditor` | Run 4-step audit loop |
+| `sdd install-hooks --role ROLE` | Install git pre-commit hook |
+| `sdd check-patterns --role ROLE` | Dry-run file enforcement check |
+| `sdd metrics show` | Display telemetry records |
+| `sdd dashboard` | Launch web dashboard |
+| `sdd projects list/add/remove` | Manage workspace projects |
+
+---
+
+## Phases Completed
+
+| Phase | Title | Tests | Coverage |
+|-------|-------|-------|----------|
+| 0-2 | Schemas + State Machine + CLI | 64 | 85%+ |
+| 3 | Agent Harness (AGENTS.yaml, audit loop) | 118 | 92% |
+| 4 | Harness Closure (enforcement + git hooks) | 190 | 92.1% |
+| 5 | Telemetry & Metrics | 225 | 91.7% |
+| 6 | Web Dashboard | 244 | 91.6% |
+| 7 | PyPI Packaging | 244+ | 91%+ |
+
+---
+
+## Development
+
 ```bash
-# Once Codex implements Phase 2:
-sdd validate contract                          # Validate CONTRACT.yaml
-sdd validate state                             # Validate STATE_SNAPSHOT.yaml
-sdd transition --from DRAFT --to REFINED      # Advance state
-sdd snapshot                                   # Show current state
-sdd log --phase 1 --agent codex                # View audit trail
+# Clone and install in dev mode
+git clone https://github.com/oscarfrancodev/sdd-plus.git
+cd sdd-plus
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Run with coverage
+pytest --cov=sdd --cov-report=html
 ```
-
----
-
-## Testing
-
-```bash
-# Run all tests
-pytest -v --cov
-
-# Run specific phase tests
-pytest tests/phase_1/ -v --cov
-
-# Watch mode (requires pytest-watch)
-ptw
-
-# Coverage report (HTML)
-pytest --cov --cov-report=html
-open htmlcov/index.html
-```
-
----
-
-## Git Workflow
-
-```bash
-# Codex creates feature branch
-git checkout -b feature/phase-N
-
-# Codex commits CONTRACT first
-git commit -m "PHASE N: Contract committed - [key spec points]"
-
-# Codex implements + tests
-git commit -m "PHASE N: [deliverable] - [context]"
-
-# Codex pushes and opens PR
-git push origin feature/phase-N
-
-# (Claude Code audits in parallel)
-
-# Once approved by Claude Code, human approves merge
-git checkout main
-git pull
-git merge --no-ff feature/phase-N
-git tag phase-N-locked
-
-# Next phase starts from here
-git checkout -b feature/phase-N+1
-```
-
----
-
-## Decisions to Confirm
-
-Before starting Phase 0, confirm:
-
-- [ ] **Pydantic v2** for schemas (type hints + validation)
-- [ ] **Typer** for CLI (not click, not argparse)
-- [ ] **Append-only logs** (git-style, immutable)
-- [ ] **Phase-by-phase with human sign-off** (no auto-advance)
-- [ ] **CI gates prevent merge** without audit green light
-- [ ] **Repository**: GitHub private (or location of choice)
-
-See `DECISIONS.md` for rationale.
-
----
-
-## Contact & Maintenance
-
-- **Maintainer**: Oscar (founder/CEO, ReguSense Inc.)
-- **Current version**: 0.1.0 (Phase 0)
-- **Last updated**: [date created]
-- **Next review**: After Phase 1 audit complete
 
 ---
 
 ## License
 
-MIT (for now — adjust as needed)
+MIT - see [LICENSE](LICENSE).
 
 ---
 
-**Ready to start Phase 0? Read AGENTS.md + CLAUDE.md, then proceed.**
+**Built by Oscar Franco (ReguSense) with Claude as dual-role agent (Implementer + Auditor).**
