@@ -90,6 +90,19 @@ def new_phase(
     typer.echo(f"  Contract template: {contract_path}")
     typer.echo(f"  Handoff log: {handoff_path}")
 
+    # Emit telemetry (fail-open -- never raises)
+    try:
+        from sdd.telemetry import emit_transition
+        emit_transition(
+            phase=next_phase,
+            role=role,
+            from_state="COMPLETED",
+            to_state="DRAFT",
+            executor="sdd-automation",
+        )
+    except Exception:
+        pass
+
     if git:
         from sdd.git_integration import create_branch, is_git_repo
         repo_root = Path.cwd()

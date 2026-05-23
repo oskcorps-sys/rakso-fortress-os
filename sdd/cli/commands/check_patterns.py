@@ -1,4 +1,4 @@
-"""sdd check-patterns — report file-pattern violations for a role + fileset.
+"""sdd check-patterns -- report file-pattern violations for a role + fileset.
 
 Used as a dry-run tool and called by the SDD pre-commit hook.
 """
@@ -17,6 +17,30 @@ from sdd.enforcement import (
 )
 
 app = typer.Typer()
+
+
+def _resolve_target_files(
+    staged: bool,
+    files: Optional[list[str]],
+    root: Optional[Path],
+) -> Optional[list[str]]:
+    """Pick the fileset to check. Returns None if no fileset is requested."""
+    if staged:
+        return get_staged_files(root)
+    if files:
+        return list(files)
+    return None
+
+
+def _print_violations(violations: list[dict], role: str) -> None:
+    """Emit human-readable violation report to stderr."""
+    typer.echo(
+        f"FAIL: {len(violations)} violation(s) for role '{role}':", err=True
+    )
+    for v in violations:
+        typer.echo(f"  file   : {v['file']}", err=True)
+        typer.echo(f"  rule   : {v['pattern']}", err=True)
+        typer.echo("", err=True)
 
 
 @app.command("check-patterns")
@@ -55,26 +79,19 @@ def check_patterns(
     """
     root = Path(repo_root) if repo_root else None
 
-    # --- resolve role ---
     active_role = role or resolve_role(root)
     if not active_role:
         typer.echo("INFO: No role set - enforcement is a no-op (advisory mode).")
         raise typer.Exit(code=0)
 
-    # --- resolve fileset ---
-    if staged:
-        target_files = get_staged_files(root)
-    elif files:
-        target_files = list(files)
-    else:
+    target_files = _resolve_target_files(staged, files, root)
+    if target_files is None:
         typer.echo("INFO: No files specified and --staged not set.  Nothing to check.")
         raise typer.Exit(code=0)
-
     if not target_files:
         typer.echo("OK: No files to check.")
         raise typer.Exit(code=0)
 
-    # --- load patterns ---
     config = load_agents_config(root)
     if config is None:
         typer.echo("INFO: AGENTS.yaml not found - enforcement disabled (no-op).")
@@ -85,18 +102,10 @@ def check_patterns(
         typer.echo(f"OK: No forbidden patterns defined for role '{active_role}'.")
         raise typer.Exit(code=0)
 
-    # --- check ---
     violations = check_files(target_files, active_role, forbidden)
-
     if not violations:
         typer.echo(f"OK: No violations for role '{active_role}'.")
         raise typer.Exit(code=0)
 
-    typer.echo(
-        f"FAIL: {len(violations)} violation(s) for role '{active_role}':", err=True
-    )
-    for v in violations:
-        typer.echo(f"  file   : {v['file']}", err=True)
-        typer.echo(f"  rule   : {v['pattern']}", err=True)
-        typer.echo("", err=True)
+    _print_violations(violations, active_role)
     raise typer.Exit(code=1)

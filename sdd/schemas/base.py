@@ -31,10 +31,15 @@ class WarningItem(BaseModel):
 
 
 class ValidationResult(BaseModel):
-    """Standard validation result format."""
+    """Standard validation result format.
+
+    Note: the field is named ``schema_name`` (not ``schema``) because
+    ``BaseModel.schema()`` is a built-in Pydantic method and shadowing it
+    triggers a UserWarning. The two are otherwise unrelated.
+    """
 
     valid: bool = Field(..., description="True if artifact is valid")
-    schema: str = Field(..., description="Schema name used (contract, state, etc)")
+    schema_name: str = Field(..., description="Schema name used (contract, state, etc)")
     errors: List[ErrorItem] = Field(default_factory=list, description="Validation errors")
     warnings: List[WarningItem] = Field(default_factory=list, description="Warnings")
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))

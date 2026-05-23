@@ -35,7 +35,7 @@ def validate_state(
             StateSnapshotSchema.model_validate(data)
             return ValidationResult(
                 valid=True,
-                schema=schema_name,
+                schema_name=schema_name,
                 errors=[],
                 warnings=[]
             )
@@ -50,7 +50,7 @@ def validate_state(
             ]
             return ValidationResult(
                 valid=False,
-                schema=schema_name,
+                schema_name=schema_name,
                 errors=errors,
                 warnings=[]
             )
@@ -58,7 +58,7 @@ def validate_state(
     except FileNotFoundError as e:
         return ValidationResult(
             valid=False,
-            schema=schema_name,
+            schema_name=schema_name,
             errors=[
                 ErrorItem(
                     field="file",
@@ -71,7 +71,7 @@ def validate_state(
     except yaml.YAMLError as e:
         return ValidationResult(
             valid=False,
-            schema=schema_name,
+            schema_name=schema_name,
             errors=[
                 ErrorItem(
                     field="yaml",
@@ -84,7 +84,7 @@ def validate_state(
     except Exception as e:
         return ValidationResult(
             valid=False,
-            schema=schema_name,
+            schema_name=schema_name,
             errors=[
                 ErrorItem(
                     field="unknown",

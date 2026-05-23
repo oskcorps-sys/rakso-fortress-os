@@ -23,7 +23,7 @@ class TestValidateContractValidator:
         result = validate_contract(data)
         assert result.valid is True
         assert len(result.errors) == 0
-        assert result.schema == "contract"
+        assert result.schema_name == "contract"
 
     def test_validate_contract_invalid_dict(self):
         """Test validator with invalid dict."""
@@ -73,7 +73,7 @@ class TestValidateStateValidator:
         }
         result = validate_state(data)
         assert result.valid is True
-        assert result.schema == "state"
+        assert result.schema_name == "state"
 
     def test_validate_state_invalid(self):
         """Test state validator with invalid data."""
@@ -115,7 +115,7 @@ class TestValidatorErrorHandling:
             "specification": {},
         }
         result = validate_contract(data, schema_name="custom_name")
-        assert result.schema == "custom_name"
+        assert result.schema_name == "custom_name"
 
     def test_validate_state_yaml_error(self):
         """Test state validator handles YAML syntax errors."""

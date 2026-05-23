@@ -11,6 +11,46 @@ from sdd.telemetry import query_audits, query_transitions
 app = typer.Typer()
 
 
+def _parse_since(since: Optional[str]) -> Optional[datetime]:
+    """Parse an ISO-8601 datetime, defaulting tz-naive values to UTC.
+
+    Raises typer.Exit(1) on parse failure (with a user-friendly message).
+    """
+    if since is None:
+        return None
+    try:
+        dt = datetime.fromisoformat(since)
+    except ValueError:
+        typer.echo(f"FAIL: invalid --since value: {since!r} (expected ISO-8601)", err=True)
+        raise typer.Exit(code=1)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return dt
+
+
+def _print_transitions(records: list[dict]) -> None:
+    typer.echo(f"-- Transitions ({len(records)}) --")
+    for r in records:
+        typer.echo(
+            f"  [{r.get('timestamp', '')[:19]}] "
+            f"phase={r.get('phase')} "
+            f"role={r.get('role')} "
+            f"{r.get('from_state')} -> {r.get('to_state')}"
+        )
+
+
+def _print_audits(records: list[dict]) -> None:
+    typer.echo(f"-- Audits ({len(records)}) --")
+    for r in records:
+        typer.echo(
+            f"  [{r.get('timestamp', '')[:19]}] "
+            f"phase={r.get('phase')} "
+            f"verdict={r.get('verdict')} "
+            f"coverage={r.get('coverage_pct')}% "
+            f"findings={r.get('finding_count')}"
+        )
+
+
 @app.command("show")
 def show(
     phase: Optional[int] = typer.Option(
@@ -38,17 +78,7 @@ def show(
       sdd metrics show --since 2026-05-20T00:00:00Z
     """
     root = Path(metrics_root) if metrics_root else None
-
-    # Parse --since
-    since_dt: Optional[datetime] = None
-    if since:
-        try:
-            since_dt = datetime.fromisoformat(since)
-            if since_dt.tzinfo is None:
-                since_dt = since_dt.replace(tzinfo=UTC)
-        except ValueError:
-            typer.echo(f"FAIL: invalid --since value: {since!r} (expected ISO-8601)", err=True)
-            raise typer.Exit(code=1)
+    since_dt = _parse_since(since)
 
     transitions = query_transitions(phase=phase, since=since_dt, metrics_root=root)
     audits = query_audits(phase=phase, since=since_dt, metrics_root=root)
@@ -58,22 +88,6 @@ def show(
         return
 
     if transitions:
-        typer.echo(f"-- Transitions ({len(transitions)}) --")
-        for r in transitions:
-            typer.echo(
-                f"  [{r.get('timestamp', '')[:19]}] "
-                f"phase={r.get('phase')} "
-                f"role={r.get('role')} "
-                f"{r.get('from_state')} -> {r.get('to_state')}"
-            )
-
+        _print_transitions(transitions)
     if audits:
-        typer.echo(f"-- Audits ({len(audits)}) --")
-        for r in audits:
-            typer.echo(
-                f"  [{r.get('timestamp', '')[:19]}] "
-                f"phase={r.get('phase')} "
-                f"verdict={r.get('verdict')} "
-                f"coverage={r.get('coverage_pct')}% "
-                f"findings={r.get('finding_count')}"
-            )
+        _print_audits(audits)
