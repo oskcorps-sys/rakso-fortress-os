@@ -1,5 +1,11 @@
 # SDD+ - Specification-Driven Development Extended
 
+[![Python 3.13+](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://www.python.org/downloads/)
+[![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/Tests-261%20passing-brightgreen.svg)](https://github.com/oskcorps-sys/sdd-plus/actions)
+[![Coverage](https://img.shields.io/badge/Coverage-91%25-brightgreen.svg)](#test-coverage)
+[![Code Quality](https://img.shields.io/badge/Complexity-A%2FB-brightgreen.svg)](#code-quality)
+
 LLM-agnostic spec-first governance framework for AI-assisted development, with independent audit gates, role-based file enforcement, telemetry, and a web dashboard.
 
 **Core principle**: Specifications are binding. Code follows spec, not vice versa. Audit is independent and impartial.
