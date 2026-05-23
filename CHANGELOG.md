@@ -2,6 +2,26 @@
 
 All notable changes to SDD+ are documented here.
 
+## [0.3.0] - 2026-05-23
+
+Phase 8 + 9: GitHub Integration and PyPI publish.
+
+### Added
+- **`sdd audit --github`** (Phase 8 S1): APPROVED audit auto-creates a GitHub PR with spec and audit artifact links
+- **`sdd new-phase --github`** (Phase 8 S2): Phase advance auto-creates a GitHub milestone for the new phase and a draft release for the completed phase
+- **`sdd transition --github`** (Phase 8 S3): State transitions apply a `sdd:{STATE}` label to open GitHub issues in the current phase milestone; labels are color-coded and auto-created if missing
+- **PyPI Trusted Publishing** (Phase 9): `publish.yml` workflow — publishes to PyPI on `v*` tags via OIDC, no API tokens required
+- **`github-automation` Sinapsis skill**: PowerShell helpers wrapping `gh` CLI for PR, issues, releases, and branch management
+
+### Changed
+- `pyproject.toml`: fixed repo URLs (`oskcorps-sys/sdd-plus`), moved `pytest`/`pytest-cov` to `[dev]`, bumped version to 0.3.0, added `build`, `bandit`, `radon`, `pip-audit` to `[dev]`
+- CI: removed legacy `tests.yml` (superseded by `ci.yml` which runs on Python 3.13 + 3.14)
+
+### Stats
+- 307 tests · 91% coverage · 3 GitHub integration PRs merged
+
+---
+
 ## [0.2.0] - 2026-05-21
 
 LLM-agnostic refactor. SDD+ no longer assumes any specific AI provider.
