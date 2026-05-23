@@ -377,3 +377,199 @@ def test_audit_git_flag_commits(monkeypatch, tmp_path):
     assert len(committed_calls) == 1
     assert "PHASE_1_AUDIT.yaml" in committed_calls[0]["files"][0]
     assert "abc1234" in result.output
+
+
+# ---------------------------------------------------------------------------
+# GitHub Integration Tests
+# ---------------------------------------------------------------------------
+
+class TestLoadGithubConfig:
+    """Tests for _load_github_config()."""
+
+    def test_returns_config_when_enabled(self, tmp_path, monkeypatch):
+        agents_yaml = tmp_path / "AGENTS.yaml"
+        agents_yaml.write_text(
+            "github_integration:\n  enabled: true\n  repo: owner/repo\n",
+            encoding="utf-8",
+        )
+        monkeypatch.chdir(tmp_path)
+        from sdd.cli.commands.audit import _load_github_config
+        cfg = _load_github_config()
+        assert cfg is not None
+        assert cfg["repo"] == "owner/repo"
+
+    def test_returns_none_when_disabled(self, tmp_path, monkeypatch):
+        agents_yaml = tmp_path / "AGENTS.yaml"
+        agents_yaml.write_text(
+            "github_integration:\n  enabled: false\n  repo: owner/repo\n",
+            encoding="utf-8",
+        )
+        monkeypatch.chdir(tmp_path)
+        from sdd.cli.commands.audit import _load_github_config
+        assert _load_github_config() is None
+
+    def test_returns_none_when_repo_missing(self, tmp_path, monkeypatch):
+        agents_yaml = tmp_path / "AGENTS.yaml"
+        agents_yaml.write_text(
+            "github_integration:\n  enabled: true\n",
+            encoding="utf-8",
+        )
+        monkeypatch.chdir(tmp_path)
+        from sdd.cli.commands.audit import _load_github_config
+        assert _load_github_config() is None
+
+    def test_returns_none_when_agents_yaml_absent(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        from sdd.cli.commands.audit import _load_github_config
+        assert _load_github_config() is None
+
+    def test_returns_none_when_block_absent(self, tmp_path, monkeypatch):
+        agents_yaml = tmp_path / "AGENTS.yaml"
+        agents_yaml.write_text("version: 1\nroles: {}\n", encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        from sdd.cli.commands.audit import _load_github_config
+        assert _load_github_config() is None
+
+
+class TestCreateGithubPR:
+    """Tests for _create_github_pr()."""
+
+    def test_creates_pr_and_logs_url(self, monkeypatch, capsys):
+        from sdd.cli.commands.audit import _create_github_pr
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "https://github.com/owner/repo/pull/42\n"
+        mock_result.stderr = ""
+        monkeypatch.setattr("subprocess.run", lambda *a, **kw: mock_result)
+
+        _create_github_pr(
+            phase=8,
+            coverage_pct=91.5,
+            audit_file="sdd/artifacts/PHASE_8_AUDIT.yaml",
+            cfg={"repo": "owner/repo"},
+        )
+        captured = capsys.readouterr()
+        assert "https://github.com/owner/repo/pull/42" in captured.out
+
+    def test_fail_open_when_gh_fails(self, monkeypatch, capsys):
+        from sdd.cli.commands.audit import _create_github_pr
+
+        mock_result = MagicMock()
+        mock_result.returncode = 1
+        mock_result.stdout = ""
+        mock_result.stderr = "gh: command failed"
+        monkeypatch.setattr("subprocess.run", lambda *a, **kw: mock_result)
+
+        # Should NOT raise — fail-open
+        _create_github_pr(8, 91.5, "sdd/artifacts/PHASE_8_AUDIT.yaml", {"repo": "owner/repo"})
+        captured = capsys.readouterr()
+        assert "WARN" in captured.out
+
+    def test_fail_open_on_exception(self, monkeypatch, capsys):
+        from sdd.cli.commands.audit import _create_github_pr
+
+        monkeypatch.setattr("subprocess.run", lambda *a, **kw: (_ for _ in ()).throw(OSError("gh not found")))
+
+        # Should NOT raise — fail-open
+        _create_github_pr(8, 91.5, "sdd/artifacts/PHASE_8_AUDIT.yaml", {"repo": "owner/repo"})
+        captured = capsys.readouterr()
+        assert "WARN" in captured.out
+
+
+class TestAuditGithubFlag:
+    """Integration tests for sdd audit --github flag."""
+
+    def _mock_approved_run(self, cov_pct: float):
+        """Return a mock subprocess.run that simulates passing pytest."""
+        def mock_run(cmd, **kwargs):
+            m = MagicMock()
+            m.returncode = 0
+            m.stdout = ""
+            m.stderr = ""
+            for arg in cmd:
+                if isinstance(arg, str) and arg.startswith("--cov-report=json:"):
+                    with open(arg.split(":", 1)[1], "w") as f:
+                        json.dump({"totals": {"percent_covered": cov_pct}}, f)
+            return m
+        return mock_run
+
+    def test_github_flag_creates_pr_on_approved(self, monkeypatch, tmp_path):
+        state_path = str(tmp_path / "sdd" / "artifacts" / "STATE_SNAPSHOT.yaml")
+        _create_state_file(state_path, state="AUDITING", phase=8)
+        monkeypatch.setattr("sdd.state_machine.machine.StateMachine.STATE_FILE", state_path)
+        monkeypatch.chdir(tmp_path)
+
+        # Write AGENTS.yaml with github_integration enabled
+        (tmp_path / "AGENTS.yaml").write_text(
+            "github_integration:\n  enabled: true\n  repo: owner/repo\n",
+            encoding="utf-8",
+        )
+
+        gh_calls = []
+
+        def mock_run(cmd, **kwargs):
+            if "gh" in cmd:
+                gh_calls.append(cmd)
+                m = MagicMock()
+                m.returncode = 0
+                m.stdout = "https://github.com/owner/repo/pull/1\n"
+                m.stderr = ""
+                return m
+            return self._mock_approved_run(91.0)(cmd, **kwargs)
+
+        monkeypatch.setattr("subprocess.run", mock_run)
+
+        result = runner.invoke(app, ["audit", "--role", "auditor", "--phase", "8", "--github"])
+        assert result.exit_code == 0
+        assert "APPROVED" in result.output
+        assert any("gh" in str(c) for c in gh_calls), "gh should have been called"
+        assert "https://github.com/owner/repo/pull/1" in result.output
+
+    def test_github_flag_skipped_when_no_config(self, monkeypatch, tmp_path):
+        state_path = str(tmp_path / "sdd" / "artifacts" / "STATE_SNAPSHOT.yaml")
+        _create_state_file(state_path, state="AUDITING", phase=8)
+        monkeypatch.setattr("sdd.state_machine.machine.StateMachine.STATE_FILE", state_path)
+        monkeypatch.chdir(tmp_path)
+        # No AGENTS.yaml — no github_integration config
+
+        gh_calls = []
+
+        def mock_run(cmd, **kwargs):
+            if "gh" in cmd:
+                gh_calls.append(cmd)
+            return self._mock_approved_run(91.0)(cmd, **kwargs)
+
+        monkeypatch.setattr("subprocess.run", mock_run)
+
+        result = runner.invoke(app, ["audit", "--role", "auditor", "--phase", "8", "--github"])
+        assert result.exit_code == 0
+        assert not gh_calls, "gh should NOT have been called without config"
+
+    def test_github_flag_skipped_on_rejected(self, monkeypatch, tmp_path):
+        state_path = str(tmp_path / "sdd" / "artifacts" / "STATE_SNAPSHOT.yaml")
+        _create_state_file(state_path, state="AUDITING", phase=8)
+        monkeypatch.setattr("sdd.state_machine.machine.StateMachine.STATE_FILE", state_path)
+        monkeypatch.chdir(tmp_path)
+
+        (tmp_path / "AGENTS.yaml").write_text(
+            "github_integration:\n  enabled: true\n  repo: owner/repo\n",
+            encoding="utf-8",
+        )
+
+        gh_calls = []
+
+        def mock_run(cmd, **kwargs):
+            if "gh" in cmd:
+                gh_calls.append(cmd)
+            m = MagicMock()
+            m.returncode = 1   # pytest fails → REJECTED
+            m.stdout = ""
+            m.stderr = "1 failed"
+            return m
+
+        monkeypatch.setattr("subprocess.run", mock_run)
+
+        result = runner.invoke(app, ["audit", "--role", "auditor", "--phase", "8", "--github"])
+        assert result.exit_code != 0
+        assert not gh_calls, "gh should NOT be called on REJECTED audit"

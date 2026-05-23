@@ -1,4 +1,9 @@
 version: 1
+
+github_integration:
+  enabled: true
+  repo: "oskcorps-sys/sdd-plus"
+
 roles:
   implementer:
     description: "Writes code, tests, contracts against locked specs"
