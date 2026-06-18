@@ -1,0 +1,44 @@
+name: SDD+ Security Audit (SAST)
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  sast-scan:
+    name: Run Semgrep SAST
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Semgrep
+        run: python -m pip install semgrep
+
+      - name: Run Semgrep Audit
+        run: |
+          # Reglas estrictas: prohíbe system(), chmod u+s, curl | bash, dlopen()
+          semgrep scan --config "p/c" --config "p/rust" --config "p/security-audit" --error
+        
+  dependency-check:
+    name: Validate Makefile & Scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for unauthorized curl/wget
+        run: |
+          if grep -E -r "curl.*\|.*bash|wget.*\|.*sh" .; then
+            echo "::error::Patrón curl|bash detectado. Violación de SECURITY_CONTRACT (INV-01)."
+            exit 1
+          fi
+
+      - name: Check for SUID binaries
+        run: |
+          if grep -E -r "chmod.*u\+s|chmod.*4[0-7]{3}" .; then
+            echo "::error::Patrón SUID detectado. Violación de SECURITY_CONTRACT (INV-02)."
+            exit 1
+          fi

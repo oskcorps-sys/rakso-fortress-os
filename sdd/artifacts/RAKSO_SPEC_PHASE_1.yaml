@@ -1,0 +1,26 @@
+phase: 1
+title: "Fundación de Arquitectura Segura (Operación Fénix)"
+status: COMMITTED
+
+scope:
+  included:
+    - Makefile
+    - tools/install_deps.sh
+    - .github/workflows/security-audit.yml
+    - SECURITY.md
+
+security_invariants:
+  - id: INV-01
+    description: "Inmutabilidad del Makefile: Cualquier descarga de dependencias externas debe estar firmada y su SHA-256 verificado antes de la extracción."
+  - id: INV-02
+    description: "Prohibición de Privilegios: Ningún script o Makefile puede alterar los permisos de binarios a SUID root (`chmod u+s`)."
+  - id: INV-03
+    description: "Sockets de Sistema: Queda estrictamente prohibida la creación de sockets locales con permisos 0777."
+
+assumptions:
+  - "El repositorio actual ha sido purgado de todo historial malicioso previo a la Operación Fénix."
+  - "Los desarrolladores utilizarán claves GPG para firmar sus commits locales antes de enviarlos a origin."
+
+defer_to_next_phase:
+  - "Desarrollo del Kernel C/Rust (Fase 2)"
+  - "Integración del frontend UI con telemetría en tiempo real (Fase 3)"
