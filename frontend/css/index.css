@@ -1,0 +1,155 @@
+/* Tech Minimalism Theme */
+:root {
+  --bg-color: #050505;
+  --panel-bg: #111111;
+  --text-primary: #e0e0e0;
+  --text-secondary: #888888;
+  --accent-safe: #00ff66;
+  --accent-warn: #ffcc00;
+  --accent-danger: #ff3333;
+  --border-color: #222222;
+  --font-main: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  font-family: var(--font-main);
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.secure-shell {
+  width: 95%;
+  height: 90vh;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-color);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--panel-bg);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo-rakso {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: 2px;
+}
+
+.badge-secure {
+  background-color: rgba(0, 255, 102, 0.1);
+  color: var(--accent-safe);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  border: 1px solid var(--accent-safe);
+}
+
+.system-status {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.pulse-green {
+  background-color: var(--accent-safe);
+  box-shadow: 0 0 10px var(--accent-safe);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.status-text {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 2rem;
+  padding: 2rem;
+  flex: 1;
+}
+
+.panel {
+  background-color: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel h2 {
+  margin-top: 0;
+  font-size: 1rem;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.data-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.8rem 0;
+  border-bottom: 1px dashed var(--border-color);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+
+.data-value.safe {
+  color: var(--accent-safe);
+}
+
+.terminal-box {
+  background-color: #000;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 1rem;
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  overflow-y: auto;
+}
+
+.terminal-box p {
+  margin: 0 0 0.5rem 0;
+}

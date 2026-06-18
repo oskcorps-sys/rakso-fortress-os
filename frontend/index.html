@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RAKSO OS - Secure Control Panel</title>
+  <link rel="stylesheet" href="css/index.css">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <!-- Note: En un entorno de máxima seguridad, estas fuentes se alojarían localmente -->
+  <script src="js/app.js" defer></script>
+</head>
+<body class="tech-minimalism-theme">
+  <div class="secure-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo-rakso">RAKSO</span>
+        <span class="badge badge-secure">🛡️ SECURE KERNEL</span>
+      </div>
+      <div class="system-status">
+        <div class="indicator pulse-green"></div>
+        <span class="status-text">SYSTEM ONLINE (WSS CONNECTED)</span>
+      </div>
+    </header>
+
+    <main class="dashboard-grid">
+      <section class="panel system-overview">
+        <h2>Kernel Integrity</h2>
+        <div class="data-row">
+          <span>Syscall Hooks:</span> <span class="data-value safe">0 DETECTED</span>
+        </div>
+        <div class="data-row">
+          <span>Hidden Procs:</span> <span class="data-value safe">0 DETECTED</span>
+        </div>
+        <div class="data-row">
+          <span>Rootkit Modules:</span> <span class="data-value safe">CLEAN</span>
+        </div>
+      </section>
+
+      <section class="panel network-monitor">
+        <h2>Network Activity (WSS)</h2>
+        <div class="terminal-box" id="network-log">
+          <p>[SYS] WSS Secure tunnel established.</p>
+          <p>[SYS] ICMP remote execution vectors blocked.</p>
+          <p>[SYS] Awaiting incoming telemetry...</p>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

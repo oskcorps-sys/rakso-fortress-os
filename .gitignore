@@ -1,0 +1,32 @@
+# RAKSO Strict .gitignore
+
+# 🚫 PROHIBIDOS: Binarios precompilados y módulos de kernel (Política de Seguridad Operación Fénix)
+*.ko
+*.bin
+*.so
+*.a
+*.dll
+*.exe
+*.o
+*.obj
+
+# 🚫 PROHIBIDOS: Archivos ocultos de shell
+.hidden/
+*.sh.enc
+
+# Entornos virtuales y cachés
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Entornos y claves (Nunca deben subirse a Git)
+.env
+*.pem
+*.key
+
+# Archivos de SO
+.DS_Store
+Thumbs.db

@@ -1,0 +1,36 @@
+# RAKSO FORTRESS OS - Security Contract (Operación Fénix)
+# Este contrato vincula a todas las fases de desarrollo de RAKSO.
+
+phase: 10  # Operación Fénix (Reconstrucción Segura)
+contract_id: rakso-security-core-v1
+status: COMMITTED
+
+specification:
+  title: "Políticas Estrictas de Integridad y Red para RAKSO"
+  description: "Este contrato define las reglas de seguridad inquebrantables tras el incidente de compromiso. Ningún pull request puede ser mergeado si viola estas reglas."
+  success_criteria:
+    - "Cero binarios precompilados en el repositorio."
+    - "Cero llamadas a la red sin autenticación y cifrado (HTTPS/WSS)."
+    - "Bloqueo estricto de ejecuciones de scripts arbitrarios desde URLs (curl | bash)."
+
+constraints:
+  code_execution:
+    - "Prohibido el uso de `dlopen()` con rutas relativas o escribibles (como /tmp/)."
+    - "Prohibido el uso de SUID root (`chmod u+s`) en cualquier binario de usuario sin revisión de arquitectura."
+    - "Las descargas de dependencias deben usar sumas de verificación (SHA-256) obligatorias."
+  network:
+    - "Prohibido el tráfico no cifrado en texto plano (HTTP/Telnet/FTP)."
+    - "Cualquier canal C2 legítimo (ej. Panel de Control) debe usar WebSockets sobre WSS con autenticación JWT u OIDC."
+    - "El tráfico ICMP personalizado está estrictamente prohibido."
+  git:
+    - "El historial de `main` es inmutable. `git push --force` está denegado en la rama principal."
+
+acceptance_tests:
+  - name: "test_no_binary_modules"
+    given: "El árbol de Git"
+    when: "Se escanea en busca de .ko, .bin, .so"
+    then: "Debe retornar vacío (0 resultados)."
+  - name: "test_no_curl_bash_patterns"
+    given: "El código fuente"
+    when: "Se busca 'curl | bash' o 'wget | sh'"
+    then: "Debe fallar el build si se encuentra alguno."
