@@ -1,0 +1,85 @@
+phase: 1
+contract_id: contract-rakso-neuro-router-v1
+created_at: "2026-06-18T21:02:50Z"
+status: COMMITTED
+
+specification:
+  title: "Neuro-Router v1.0 — Capa 9 de la Arquitectura Canónica RAKSO"
+  description: |
+    Construir el Neuro-Router v1.0, la Capa 9 de la Arquitectura Canónica RAKSO.
+    Este módulo recibirá salidas estratégicas aprobadas (copy validado) y las transformará
+    en objetos JSON estrictos diseñados para consumirse por cualquier plataforma de destino.
+    El sistema debe ser 100% agnóstico y modular, permitiendo al usuario conectar cualquier
+    herramienta de IA u Open Source (texto a audio, texto a imagen, redes) según su presupuesto
+    y stack tecnológico. Operará bajo la regla inquebrantable de NO modificar el mensaje original.
+  success_criteria:
+    - "Exposes a `route(strategy_output, adapter_instance) -> str` function."
+    - "Output of the function is valid JSON, parsable by Python's `json.loads()`."
+    - "Abstract TargetAdapter and sub-adapters (AudioAdapter, VisualAdapter, DistributionAdapter) defined as Pydantic models."
+    - "Generic mock implementations provided for each adapter to prove the design."
+    - "Strict 'no message alteration' validator prevents content modifications, omissions, or additions."
+    - "Clear example showing how a developer can plug in a custom MyCustomOpenSourceAudioAdapter."
+    - "Test suite covering happy path, edge cases, custom adapters, and alteration prevention."
+    - "Test coverage for the new skill is >= 85%."
+
+inputs:
+  strategy_output:
+    type: "dict or StrategyOutput"
+    required: true
+    description: "The approved strategy output payload containing copy and funnel metadata"
+    example:
+      neurofunnel_map:
+        funnel_stage: "AWARENESS"
+      content: "This is a strictly validated psychological intervention."
+  adapter_instance:
+    type: "TargetAdapter subclass instance"
+    required: true
+    description: "An instance of an adapter that implements the TargetAdapter interface"
+    example: "MockAudioAdapter(voice_settings={}, stability=0.75)"
+
+outputs:
+  routing_payload:
+    type: "str"
+    description: "Valid, parsable JSON string representation of the mapped platform-specific payload"
+    example: |
+      {
+        "voice_settings": {},
+        "stability": 0.75,
+        "similarity_boost": 0.75,
+        "audio_input": {
+          "text": "This is a strictly validated psychological intervention.",
+          "funnel_stage": "AWARENESS"
+        }
+      }
+
+constraints:
+  - "Zero alteration: original text must be mapped verbatim and cannot be altered, omitted, or hallucinated (Integrity Violation check)."
+  - "No vendor lock-in: schemas must remain completely abstract and not reference vendor-specific parameters."
+  - "Pydantic v2 validation must be enforced on StrategyOutput and adapters."
+  - "Returned string must be valid JSON, parsable by python's `json.loads()`."
+  - "Test coverage on the new module must be >= 85%."
+
+assumptions:
+  - "The incoming StrategyOutput content is already validated by 'The Bridge'."
+  - "Standard Python library `json` and `pydantic` v2 are available in the workspace."
+
+acceptance_tests:
+  - name: "test_happy_path"
+    given: "A valid StrategyOutput object and a mock adapter instance"
+    when: "route is called"
+    then: "Returns a valid JSON string mapping the original content correctly"
+
+  - name: "test_edge_cases"
+    given: "StrategyOutput with empty content or invalid funnel stage"
+    when: "route is called"
+    then: "Raises Pydantic ValidationError or ValueError"
+
+  - name: "test_custom_adapter"
+    given: "A custom developer-defined MyCustomOpenSourceAudioAdapter subclassing AudioAdapter"
+    when: "route is called"
+    then: "Returns valid custom JSON string mapping the original content correctly"
+
+  - name: "test_no_alteration"
+    given: "An adapter that attempts to alter, append hype, or omit the original content"
+    when: "route is called"
+    then: "Raises ValueError due to integrity violation"
